@@ -55,6 +55,7 @@ python3 -m http.server 8080
 ## النشر على GitHub Pages
 1. ارفع المجلد على مستودعك.
 2. Settings → Pages → Deploy from a branch → `main` → `/ (root)` → Save.
-3. الرابط: `https://<اسم-المستخدم>.github.io/<اسم-المستودع>/hr-dashboard/`
+3. الرابط: `https://<اسم-المستخدم>.github.io/<اسم-المستودع>/`
+   (ملفات الموقع في جذر المستودع، فلا يوجد مجلد إضافي في الرابط)
 
 > ملف `.nojekyll` مهم — لا تحذفه، فهو يمنع GitHub من معالجة الملفات.
