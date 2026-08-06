@@ -21,6 +21,8 @@
   /* ---------------- أدوات ---------------- */
   const $ = (s, r) => (r || document).querySelector(s);
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // للقيم التي تُوضع داخل نص JS في خاصية onclick — تُهرَّب مرتين: كنص JS ثم كخاصية HTML
+  const jsq = (s) => esc(String(s == null ? "" : s).replace(/[\\'"]/g, "\\$&").replace(/[\r\n]/g, " "));
   const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
   const db = () => DB.cache;
   const canEdit = () => state.user && (state.user.role === "editor" || state.user.role === "owner");
@@ -151,8 +153,8 @@
       .map(([k, v]) => `<div class="mi"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
     const b = badge ? `<span class="badge ${badge[1]}">${esc(badge[0])}</span>` : "";
     const acts = act && canEdit()
-      ? `<span class="iact" title="تعديل" onclick="APP.openForm('${act.form}','${act.id}')">${icon("pen")}</span>
-         <span class="iact del" title="حذف" onclick="APP.removeRow('${act.table}','${act.id}')">${icon("trash")}</span>` : "";
+      ? `<span class="iact" title="تعديل" onclick="APP.openForm('${jsq(act.form)}','${jsq(act.id)}')">${icon("pen")}</span>
+         <span class="iact del" title="حذف" onclick="APP.removeRow('${jsq(act.table)}','${jsq(act.id)}')">${icon("trash")}</span>` : "";
     return `<div class="prow"><div class="pav">${esc((name || "?").trim()[0])}</div>
       <div class="pid"><div class="pn">${esc(name)}</div><div class="pp">${esc(pos)}</div></div>
       <div class="pmeta">${m}</div><div class="pend hact">${b}${acts}</div></div>`;
@@ -247,7 +249,7 @@
         const cls = si < c.stage ? "done" : si === c.stage ? "cur" : "";
         return `<div class="step ${cls}"><div class="c">${si < c.stage ? "✓" : si + 1}</div><div class="t">${esc(s)}</div></div>`;
       }).join("");
-      const upd = canEdit() ? `<button class="btn btn-g" onclick="APP.openForm('candidate','${c.id}')">${icon("pen")} تحديث المرحلة</button>` : "";
+      const upd = canEdit() ? `<button class="btn btn-g" onclick="APP.openForm('candidate','${jsq(c.id)}')">${icon("pen")} تحديث المرحلة</button>` : "";
       return `<div class="acc ${i === 0 ? "open" : ""}"><div class="head" onclick="this.parentElement.classList.toggle('open')">
         <span class="nm">${esc(c.name)}</span><span class="pos">${esc(c.position)}</span>
         <span class="badge b-info">${esc(STAGES[c.stage] || "")}</span><span class="chev">${CHEV}</span></div>
@@ -348,7 +350,7 @@
       ${isRoot ? '<span class="cur">الجهة كاملة</span>' : `<a onclick="APP.goNode('root')">الجهة كاملة</a><span class="sep">›</span>`}
       ${path.map((x, i) => (i === path.length - 1
         ? `<span class="cur">${esc((unitById(x) || {}).name)}</span>`
-        : `<a onclick="APP.goNode('${x}')">${esc((unitById(x) || {}).name)}</a><span class="sep">›</span>`)).join("")}
+        : `<a onclick="APP.goNode('${jsq(x)}')">${esc((unitById(x) || {}).name)}</a><span class="sep">›</span>`)).join("")}
     </div>`;
 
     const chips = `<div class="dchips">
@@ -367,8 +369,8 @@
       const cardsHtml = kids.map((k) => {
         const s = aggregate(k.id);
         const sub = childrenOf(k.id).length;
-        const editIc = canEdit() ? `<span class="iact" title="تعديل" onclick="event.stopPropagation();APP.openForm('unit','${k.id}')">${icon("pen")}</span>` : "";
-        return `<div class="dcard" onclick="APP.goNode('${k.id}')">
+        const editIc = canEdit() ? `<span class="iact" title="تعديل" onclick="event.stopPropagation();APP.openForm('unit','${jsq(k.id)}')">${icon("pen")}</span>` : "";
+        return `<div class="dcard" onclick="APP.goNode('${jsq(k.id)}')">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
           <div class="dn">${esc(k.name)}</div>${editIc}</div>
           <div class="dm"><span class="b">${s.filled}</span><span class="s">من ${s.approved} وظيفة معتمدة</span></div>
@@ -400,6 +402,14 @@
       ${side ? `<div class="panel side-panel">${side}</div>` : ""}</div>`;
   }
 
+  /* تنبيه أمني يظهر للمالك وحده — لا يراه بقية المستخدمين */
+  function secWarn() {
+    if (!canEditTitles() || DB.isRemote) return "";
+    if (!AUTH.plaintextCodesInUse()) return "";
+    return `<div class="secwarn">⚠️ رموز الدخول مكتوبة نصًا صريحًا في <code>assets/config.js</code> —
+      أي شخص يفتح مصدر الصفحة يقدر يقرأها. استبدلها ببصمات من <code>tools/hash-code.html</code>.</div>`;
+  }
+
   /* ---------------- الهيكل العام ---------------- */
   function shell(title, body) {
     const nav = [["index", "الرئيسية", "home"], ["recruitment", "التوظيف", "users"], ["training", "التدريب", "cap"],
@@ -407,7 +417,7 @@
     const rail = nav.map(([p, t, ic]) => `<a href="#/${p === "index" ? "" : p}" class="${state.page === p ? "on" : ""}"><span class="tip">${t}</span>${icon(ic)}</a>`).join("");
 
     const unitOpts = `<option value="">الكل</option>` + units().map((u) =>
-      `<option value="${u.id}" ${state.filters.unit === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + u.name)}</option>`).join("");
+      `<option value="${esc(u.id)}" ${state.filters.unit === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + u.name)}</option>`).join("");
     const yearOpts = (CFG.YEARS || [2026]).map((y) => `<option value="${y}" ${Number(state.filters.year) === y ? "selected" : ""}>${y}</option>`).join("");
     const monthOpts = `<option value="0">كل الأشهر</option>` + MONTHS_FULL.map((m, i) =>
       `<option value="${i + 1}" ${Number(state.filters.month) === i + 1 ? "selected" : ""}>${m}</option>`).join("");
@@ -439,6 +449,7 @@
         </div>
         ${body}
       </div></div>
+      ${secWarn()}
       <div class="foot">${DB.isRemote ? "متصل بقاعدة البيانات" : "وضع تجريبي محلي — البيانات محفوظة في هذا المتصفح"}</div>
       <div class="editbar"><span>وضع تعديل العناوين مُفعّل — اضغط على أي عنوان وعدّله</span>
         <button class="btn btn-p" onclick="APP.saveTitles()">حفظ التعديلات</button>
@@ -448,7 +459,7 @@
   }
 
   /* ---------------- النماذج ---------------- */
-  const unitSelect = (val) => units().map((u) => `<option value="${u.id}" ${val === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + u.name)}</option>`).join("");
+  const unitSelect = (val) => units().map((u) => `<option value="${esc(u.id)}" ${val === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + u.name)}</option>`).join("");
   const opts = (arr, val) => arr.map((o) => `<option value="${esc(o)}" ${String(val) === String(o) ? "selected" : ""}>${esc(o)}</option>`).join("");
 
   const FORMS = {
@@ -537,8 +548,8 @@
     const row = id ? (db()[F.table] || []).find((r) => r.id === id) || {} : {};
     const fh = F.fields(row).map(([k, lbl, type, val, sel, full]) => {
       const inp = sel != null
-        ? `<select class="inp" data-k="${k}">${sel}</select>`
-        : `<input class="inp" data-k="${k}" type="${type}" value="${esc(val == null ? "" : val)}" placeholder="اكتب هنا…">`;
+        ? `<select class="inp" data-k="${esc(k)}">${sel}</select>`
+        : `<input class="inp" data-k="${esc(k)}" type="${esc(type)}" value="${esc(val == null ? "" : val)}" placeholder="اكتب هنا…">`;
       return `<div class="fld2 ${full ? "full" : ""}"><label>${esc(lbl)}</label>${inp}</div>`;
     }).join("");
 
@@ -554,7 +565,7 @@
       <div class="sheet-h"><h3>${id ? "تعديل" : "إضافة"} — ${esc(F.title)}</h3>
         <button class="xbtn" onclick="APP.closeForm()">✕</button></div>
       <div class="sheet-b"><div class="frm">${fh}${period}</div></div>
-      <div class="sheet-f"><button class="btn btn-p" onclick="APP.saveForm('${kind}','${id || ""}')">${icon("check")} حفظ</button>
+      <div class="sheet-f"><button class="btn btn-p" onclick="APP.saveForm('${jsq(kind)}','${jsq(id || "")}')">${icon("check")} حفظ</button>
         <button class="btn btn-x" onclick="APP.closeForm()">إلغاء</button></div>`;
     $("#formMask").classList.add("open");
   }
@@ -661,8 +672,8 @@
           <div class="fld2 full"><label>الاسم</label>
             <input class="inp" id="dname" placeholder="مثال: أحمد الغانم" autocomplete="name"></div>
           <div class="fld2 full"><label>رمز الدخول</label>
-            <input class="inp code-inp" id="dcode" type="tel" inputmode="numeric" maxlength="8"
-              placeholder="••••" autocomplete="one-time-code"></div>
+            <input class="inp code-inp" id="dcode" type="password" inputmode="numeric" maxlength="32"
+              placeholder="••••••••••" autocomplete="off"></div>
           <button class="btn btn-p login-btn" onclick="APP.demoLogin()">دخول</button>`
         : `
           <div class="fld2 full"><label>البريد الإلكتروني</label>
@@ -691,7 +702,10 @@
       const code = document.getElementById("dcode").value.trim();
       if (!name) return loginScreen("فضلًا أدخل الاسم");
       if (!code) return loginScreen("فضلًا أدخل رمز الدخول");
-      try { state.user = AUTH.demoSignIn(name, code); } catch (e) { return loginScreen(e.message); }
+      const btn = $(".login-btn");
+      if (btn) { btn.disabled = true; btn.textContent = "جارٍ التحقق…"; }
+      try { state.user = await AUTH.demoSignIn(name, code); }
+      catch (e) { return loginScreen(e.message); }
       await boot();
     },
     async login() {

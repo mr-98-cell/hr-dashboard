@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>توليد بصمة رمز الدخول · أداء</title>
+<style>
+  :root{--g-900:#003b33;--g-700:#016b5f;--line:#e6efec;--ink:#132420;--muted:#8a9a95}
+  *{box-sizing:border-box}
+  body{margin:0;padding:24px;background:#eef6f4;color:var(--ink);
+       font-family:"Noto Sans Arabic","Segoe UI",Tahoma,sans-serif;line-height:1.9}
+  .wrap{max-width:640px;margin:0 auto;background:#fff;border-radius:22px;
+        padding:26px;box-shadow:0 20px 50px rgba(0,40,34,.12)}
+  h1{font-size:19px;margin:0 0 6px;color:var(--g-900)}
+  p.sub{margin:0 0 20px;font-size:13px;color:var(--muted)}
+  label{display:block;font-size:13px;font-weight:700;margin:16px 0 6px}
+  input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:12px;
+        font-size:15px;font-family:inherit}
+  input:focus{outline:2px solid var(--g-700);outline-offset:1px}
+  button{margin-top:18px;width:100%;padding:13px;border:0;border-radius:12px;
+         background:var(--g-700);color:#fff;font-size:15px;font-weight:700;
+         font-family:inherit;cursor:pointer}
+  button:disabled{opacity:.6;cursor:default}
+  .out{margin-top:20px;display:none}
+  .out.show{display:block}
+  pre{background:#f5f9f8;border:1px solid var(--line);border-radius:12px;padding:14px;
+      font-size:12.5px;direction:ltr;text-align:left;overflow-x:auto;white-space:pre-wrap;
+      word-break:break-all;margin:0}
+  .note{margin-top:18px;padding:12px 15px;border-radius:12px;background:#fdf8ec;
+        border:1px solid #f0e2bf;font-size:12.5px;color:#7a5c12}
+  .err{color:#8f2f2f;font-size:13px;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>توليد بصمة رمز الدخول</h1>
+  <p class="sub">اكتب الرمز الجديد، وانسخ الناتج إلى <code>assets/config.js</code>.</p>
+
+  <label for="salt">المِلح (AUTH_SALT) — انسخه كما هو من ملف الإعدادات</label>
+  <input id="salt" value="adaa-hr-85LwqbXKxGk6" autocomplete="off" spellcheck="false">
+
+  <label for="iter">عدد الدورات (AUTH_ITERATIONS)</label>
+  <input id="iter" type="number" value="600000" autocomplete="off">
+
+  <label for="code">الرمز الجديد</label>
+  <input id="code" type="text" placeholder="مثال: 4930172845" autocomplete="off" spellcheck="false">
+
+  <button id="go">توليد البصمة</button>
+  <div class="err" id="err"></div>
+
+  <div class="out" id="out">
+    <label>البصمة — ضعها مقابل الصلاحية داخل <code>ACCESS_CODE_HASHES</code></label>
+    <pre id="hash"></pre>
+  </div>
+
+  <div class="note">
+    ⚠️ كل الرموز الثلاثة لازم تُولَّد بنفس المِلح ونفس عدد الدورات.
+    إن غيّرت المِلح، أعد توليد الرموز الثلاثة كلها.<br>
+    كلما طال الرمز صعُب تخمينه — يُنصح بعشرة أرقام فأكثر.
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+async function derive(code, salt, iterations) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw", enc.encode(code.normalize("NFKC")), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits(
+    { name: "PBKDF2", salt: enc.encode(salt), iterations, hash: "SHA-256" }, key, 256);
+  return btoa(String.fromCharCode.apply(null, new Uint8Array(bits)));
+}
+
+$("go").addEventListener("click", async () => {
+  const code = $("code").value.trim();
+  const salt = $("salt").value;
+  const iter = Number($("iter").value) || 600000;
+  $("err").textContent = "";
+  $("out").classList.remove("show");
+
+  if (!code) { $("err").textContent = "فضلًا اكتب الرمز."; return; }
+  if (!crypto.subtle) {
+    $("err").textContent = "المتصفح لا يدعم التشفير هنا — افتح الصفحة عبر https أو localhost.";
+    return;
+  }
+
+  $("go").disabled = true;
+  $("go").textContent = "جارٍ التوليد…";
+  try {
+    $("hash").textContent = await derive(code, salt, iter);
+    $("out").classList.add("show");
+  } catch (e) {
+    $("err").textContent = "تعذّر التوليد: " + e.message;
+  } finally {
+    $("go").disabled = false;
+    $("go").textContent = "توليد البصمة";
+  }
+});
+
+$("code").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
+</script>
+</body>
+</html>
