@@ -599,6 +599,54 @@
     toast("جارٍ تنزيل ملف Excel");
   }
 
+  /* الرسوم التي تدخل تقرير PDF — نفس دوال الرسم المستخدمة في الشاشة */
+  function exportCharts() {
+    const vac = rows("vacancies"), cands = rows("candidates"), ivs = rows("interviews");
+    const tr = rows("trainees"), tm = rows("tamheer"), rs = rows("resignations");
+    const totalVac = vac.reduce((a, v) => a + Number(v.count || 0), 0);
+    const done = cands.filter((c) => c.stage >= 5).length;
+    const inprog = cands.filter((c) => c.stage < 5).length;
+    const cnt = (list, st) => list.filter((x) => x.status === st).length;
+    const a = state.filters.unit ? aggregate(state.filters.unit) : aggregateAll();
+    const vacant = a.approved - a.filled;
+
+    const gradeSegs = (() => {
+      const g = {};
+      rs.forEach((r) => { if (r.grade) g[r.grade] = (g[r.grade] || 0) + 1; });
+      return Object.keys(g).map((k, i) => [k, g[k], PALETTE[i % PALETTE.length]]);
+    })();
+
+    const secs = [
+      ["نظرة عامة", [
+        ["توزيع حالة طلبات التوظيف", donut([["شاغرة", totalVac, "var(--g-400)"], ["تحت الإجراء", inprog, "var(--g-600)"], ["مكتملة", done, "var(--g-800)"]], totalVac + inprog + done, "إجمالي", { size: 200 })],
+        ["توزيع الاستقالات حسب القطاع", colbars(distBy(rs))],
+      ]],
+      ["المقابلات", [
+        ["عدد طلبات المقابلات", donut([["مجدولة", cnt(ivs, "مجدولة"), "var(--amber)"], ["مكتملة", cnt(ivs, "تمت"), "var(--g-800)"], ["مرفوضة", cnt(ivs, "مرفوضة"), "var(--red)"]], ivs.length, "مقابلة", { size: 200 })],
+        ["الوظائف الشاغرة حسب القطاع", colbars(distBy(vac, "count"))],
+      ]],
+      ["التدريب وتمهير", [
+        ["حالة طلبات التدريب", donut([["مكتملة", cnt(tr, "مكتمل"), "var(--emerald)"], ["تحت الإجراء", cnt(tr, "تحت الإجراء"), "var(--g-600)"], ["قائم", cnt(tr, "قائم"), "var(--g-400)"]], tr.length, "طلب", { size: 190 })],
+        ["حالة طلبات تمهير", donut([["مكتملة", cnt(tm, "مكتمل"), "var(--emerald)"], ["تحت الإجراء", cnt(tm, "تحت الإجراء"), "var(--g-600)"], ["قائم", cnt(tm, "قائم"), "var(--g-400)"]], tm.length, "طلب", { size: 190 })],
+        ["توزيع المتدربين على القطاعات", colbars(distBy(tr))],
+      ]],
+      ["الاستقالات", [
+        ["حسب الدرجة", gradeSegs.length ? donut(gradeSegs, rs.length, "استقالة", { size: 200 }) : ""],
+      ]],
+      ["الشواغر والإشغال", [
+        ["نسبة الإشغال", ring(pct(a.filled, a.approved), "var(--g-700)", "إشغال", `${a.filled} مشغولة · ${vacant} شاغرة`, 210)],
+        ["الشواغر", splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", vacant, "var(--g-400)"]])],
+        ["الجنس", splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])],
+      ]],
+    ];
+
+    return secs.map(([title, boxes]) => {
+      const inner = boxes.filter(([, html]) => html).map(([bt, html]) =>
+        `<div class="cbox"><div class="cbt">${esc(t(bt))}</div>${html}</div>`).join("");
+      return inner ? `<section><h2>${esc(t(title))}</h2><div class="cgrid">${inner}</div></section>` : "";
+    }).join("");
+  }
+
   /* PDF — نافذة طباعة بصفحة مستقلة لكل جدول؛ يحفظها المتصفح PDF */
   function exportPDF() {
     const esc2 = esc;
@@ -611,7 +659,8 @@
       </section>`).join("");
     const w = window.open("", "_blank");
     if (!w) { alert("المتصفح منع فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة"); return; }
-    w.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+    const chartHTML = exportCharts();
+    w.document.write(`<!doctype html><html lang="${state.lang}" dir="${state.lang === "en" ? "ltr" : "rtl"}"><head><meta charset="utf-8">
       <title>تقرير استقطاب المواهب</title><style>
       @page{size:A4 landscape;margin:14mm}
       *{box-sizing:border-box}
@@ -627,10 +676,35 @@
       td{border-bottom:1px solid #e6efec;padding:5px 7px;text-align:right}
       tr:nth-child(even) td{background:#f4f9f8}
       .none{font-size:12px;color:#8a9a95}
+      /* ألوان الهوية — تُعرَّف هنا لأن نافذة الطباعة لا ترث أنماط التطبيق */
+      :root{--g-900:#003b33;--g-800:#00584c;--g-700:#016b5f;--g-600:#008b84;--g-500:#3ba295;
+        --g-400:#5aaba2;--g-100:#d6e6e3;--g-50:#eef6f4;--gold:#e0a200;--emerald:#00b288;
+        --amber:#e0971a;--red:#d34a4a;--ink-2:#4b5a55;--line:#e6efec;--panel:#fff;--ringtrack:#eef6f4}
+      .cgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+      .cbox{border:1px solid #e6efec;border-radius:12px;padding:12px 14px;break-inside:avoid}
+      .cbox:only-child{grid-column:1/-1}
+      .cbt{font-size:12.5px;font-weight:700;color:#00584c;margin-bottom:8px;text-align:center}
+      .donut-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap;justify-content:center}
+      .legend{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#4b5a55}
+      .legend .it{display:flex;align-items:center;gap:7px}
+      .legend .sw{width:11px;height:11px;border-radius:3px;flex:0 0 11px}
+      .legend b{color:#003b33}
+      .ring-wrap{display:flex;flex-direction:column;align-items:center;gap:4px}
+      .ring-note{font-size:11px;color:#4b5a55;text-align:center}
+      .cbars{display:flex;align-items:flex-end;justify-content:space-around;gap:8px;padding:8px 4px 0;min-height:190px}
+      .cb{display:flex;flex-direction:column;align-items:center;gap:6px;flex:1;min-width:0}
+      .cb .cbv{font-weight:800;font-size:12px;color:#00584c}
+      .cb .cbcol{width:30px;border-radius:7px 7px 3px 3px}
+      .cb .cbl{font-size:9px;color:#4b5a55;text-align:center;line-height:1.3;min-height:26px}
+      .split{display:flex;height:28px;border-radius:8px;overflow:hidden;border:1px solid #e6efec}
+      .split i{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11px;font-weight:800;font-style:normal}
+      .slg{display:flex;justify-content:center;gap:14px;margin-top:8px;font-size:10.5px;color:#4b5a55}
+      .slg .i{display:flex;align-items:center;gap:5px}
+      .slg .sw{width:9px;height:9px;border-radius:3px}
       </style></head><body>
       <header><h1>تقرير متابعة إدارة استقطاب المواهب</h1>
-      <div class="meta">${esc2(CFG.ORG_NAME || "")} · ${esc2(filterLabel())} · صدر في ${new Date().toLocaleDateString("ar-SA")}</div></header>
-      ${sections}</body></html>`);
+      <div class="meta">${esc2(CFG.ORG_NAME || "")} · ${esc2(filterLabel())} · صدر في ${esc(fmtDate(new Date().toISOString().slice(0, 10)))}</div></header>
+      ${chartHTML}${sections}</body></html>`);
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 600);
