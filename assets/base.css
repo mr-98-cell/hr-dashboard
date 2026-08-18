@@ -99,6 +99,7 @@ h1,h2,h3,h4{font-family:"Noto Kufi Arabic","Noto Sans Arabic",sans-serif}
 .view.show{display:flex}
 /* overview grid (main page: all sections at once) */
 .vgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;flex:1}
+.vgrid.three{grid-template-columns:repeat(3,1fr)}
 .vgrid .panel{display:flex;flex-direction:column}
 .vgrid .panel .body{flex:1;display:flex;flex-direction:column;justify-content:center}
 .two-ring{display:flex;gap:10px;justify-content:space-around;flex-wrap:wrap}
