@@ -15,6 +15,7 @@
     "interviews",  // المقابلات
     "onboarding",  // الانضمام
     "trainees",    // المتدربون
+    "tamheer",     // طلبات تمهير
     "resignations",// الاستقالات
     "settings",    // العناوين القابلة للتعديل
   ];
@@ -88,6 +89,14 @@
       { id: "t5", name: "عبدالرحمن الشهري", supervisor: "أ. طارق الغامدي", university: "جامعة الملك عبدالعزيز", unit_id: "s7", start_date: "٢٠ يونيو", end_date: "٢٠ سبتمبر", phone: "0544445556", status: "مكتمل", year: 2026, month: 6 },
     ],
 
+    tamheer: [
+      { id: "tm1", name: "فهد الحربي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "s1", start_date: "١ يوليو", end_date: "٣١ ديسمبر", phone: "0553334445", status: "قائم", year: 2026, month: 7 },
+      { id: "tm2", name: "نورة الشمري", supervisor: "أ. نورة السالم", university: "جامعة الأميرة نورة", unit_id: "s2", start_date: "١ يونيو", end_date: "٣٠ نوفمبر", phone: "0556667778", status: "قائم", year: 2026, month: 6 },
+      { id: "tm3", name: "تركي المالكي", supervisor: "أ. منى الحربي", university: "جامعة الملك فهد", unit_id: "s5", start_date: "١٥ أغسطس", end_date: "١٥ فبراير", phone: "0502223334", status: "تحت الإجراء", year: 2026, month: 8 },
+      { id: "tm4", name: "شهد العتيبي", supervisor: "أ. ريم الشمري", university: "جامعة الملك عبدالعزيز", unit_id: "s6", start_date: "١ يوليو", end_date: "٣١ ديسمبر", phone: "0534445556", status: "قائم", year: 2026, month: 7 },
+      { id: "tm5", name: "بدر الزهراني", supervisor: "أ. طارق الغامدي", university: "جامعة الإمام", unit_id: "s7", start_date: "١ مايو", end_date: "٣١ أكتوبر", phone: "0545556667", status: "مكتمل", year: 2026, month: 5 },
+    ],
+
     resignations: [
       { id: "r1", name: "ماجد السبيعي", position: "محلل نظم", grade: "الثامنة", unit_id: "s1", last_day: "١٥ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
       { id: "r2", name: "هيفاء المالكي", position: "أخصائي تسويق", grade: "السابعة", unit_id: "s2", last_day: "٣١ يوليو ٢٠٢٦", reason: "", year: 2026, month: 7 },
@@ -97,6 +106,7 @@
 
     settings: [
       { id: "targets", key: "training_target", value: "80" },
+      { id: "tamheer", key: "tamheer_target", value: "40" },
       { id: "titles", key: "titles", value: "{}" },
     ],
   };
@@ -105,11 +115,24 @@
   function readLocal() {
     try {
       const raw = localStorage.getItem(LS_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) return migrate(JSON.parse(raw));
     } catch (e) {}
     const fresh = JSON.parse(JSON.stringify(SEED));
     writeLocal(fresh);
     return fresh;
+  }
+
+  // بيانات محفوظة من إصدار أقدم قد تنقصها جداول أو إعدادات أضيفت لاحقًا
+  function migrate(db) {
+    let changed = false;
+    for (const t of TABLES) {
+      if (!Array.isArray(db[t])) { db[t] = JSON.parse(JSON.stringify(SEED[t] || [])); changed = true; }
+    }
+    for (const s of SEED.settings) {
+      if (!db.settings.some((x) => x.key === s.key)) { db.settings.push(JSON.parse(JSON.stringify(s))); changed = true; }
+    }
+    if (changed) writeLocal(db);
+    return db;
   }
   function writeLocal(db) {
     try { localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch (e) {}

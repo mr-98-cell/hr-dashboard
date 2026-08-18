@@ -32,6 +32,7 @@
     users: '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20c0-3.3 2.5-5.5 5.5-5.5s5.5 2.2 5.5 5.5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 20c0-2.4-1-4.2-2.6-5"/>',
     cap: '<path d="M12 4 22 9l-10 5L2 9z"/><path d="M6 11v5c0 1.4 2.7 2.6 6 2.6s6-1.2 6-2.6v-5"/>',
     exit: '<path d="M15 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h9"/><path d="M11 12h9M17 8l4 4-4 4"/>',
+    clip: '<path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z"/><path d="M8 6H6a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1h-2"/><path d="m9.5 13.5 2 2 3.5-3.5"/>',
     office: '<path d="M3 21h18M5 21V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v15M13 21V10h5a1 1 0 0 1 1 1v10"/><path d="M8 9h2M8 13h2M8 17h2M16 14h.01M16 17h.01"/>',
     pen: '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/>',
     plus: '<path d="M12 5v14M5 12h14"/>',
@@ -180,12 +181,17 @@
     const trDone = trainees.filter((t) => t.status === "مكتمل").length;
     const trProg = trainees.filter((t) => t.status === "تحت الإجراء").length;
     const trOn = trainees.filter((t) => t.status === "قائم").length;
+    const tamheer = rows("tamheer");
+    const tmDone = tamheer.filter((t) => t.status === "مكتمل").length;
+    const tmProg = tamheer.filter((t) => t.status === "تحت الإجراء").length;
+    const tmOn = tamheer.filter((t) => t.status === "قائم").length;
 
     const bySector = roots().map((r, i) => [r.name, resg.filter((x) => x.unit_id && rootOf(x.unit_id) === r.id).length, PALETTE[i % PALETTE.length]]);
 
     const cards = [
       ["recruitment", "users", received, "طلبات التوظيف المستلمة"],
       ["training", "cap", trainees.length, "طلبات التدريب"],
+      ["tamheer", "clip", tamheer.length, "طلبات تمهير"],
       ["resignations", "exit", resg.length, "الاستقالات"],
       ["recruitment", "check", pct(done, totalVac) + "%", "نسبة إنجاز التوظيف"],
     ].map(([href, ic, v, l]) => `<a class="tcard" href="#/${href}"><div class="ic">${icon(ic)}</div>
@@ -198,6 +204,9 @@
       ["توزيع حالة طلبات التدريب", `من إجمالي ${trainees.length}`,
         donut([["مكتملة", trDone, "var(--emerald)"], ["تحت الإجراء", trProg, "var(--g-600)"], ["قائم", trOn, "var(--g-400)"]],
           trainees.length, "طلب", { size: 240 })],
+      ["توزيع حالة طلبات تمهير", `من إجمالي ${tamheer.length}`,
+        donut([["مكتملة", tmDone, "var(--emerald)"], ["تحت الإجراء", tmProg, "var(--g-600)"], ["قائم", tmOn, "var(--g-400)"]],
+          tamheer.length, "طلب", { size: 240 })],
       ["توزيع الاستقالات حسب القطاع", `الإجمالي ${resg.length}`, colbars(bySector)],
     ].map((p, i, arr) => `<div class="panel"${i === arr.length - 1 && arr.length % 2 === 1 ? ' style="grid-column:1/-1"' : ""}>
       <div class="p-h"><h3 class="ttl-edit" data-k="${esc(p[0])}">${esc(p[0])}</h3><span class="hint">${esc(p[1])}</span></div>
@@ -224,11 +233,11 @@
     const ivSch = ivs.filter((i) => i.status === "مجدولة").length;
 
     const ov = `<div class="vgrid">
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit">حالة المقابلات</h3></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="حالة المقابلات">حالة المقابلات</h3></div>
         <div class="body">${donut([["مجدولة", ivSch, "var(--amber)"], ["مرفوضة", ivRej, "var(--red)"], ["مكتملة", ivDone, "var(--g-800)"]], ivs.length, "مقابلة", { size: 190 })}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit">الوظائف الشاغرة حسب القطاع</h3><span class="hint">الإجمالي ${totalVac}</span></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="الوظائف الشاغرة حسب القطاع">الوظائف الشاغرة حسب القطاع</h3><span class="hint">الإجمالي ${totalVac}</span></div>
         <div class="body">${colbars(bySectorVac)}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit">الطلبات المستلمة حسب القطاع</h3><span class="hint">الإجمالي ${received}</span></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="الطلبات المستلمة حسب القطاع">الطلبات المستلمة حسب القطاع</h3><span class="hint">الإجمالي ${received}</span></div>
         <div class="body">${colbars(bySectorRec)}</div></div></div>`;
 
     // المقابلات
@@ -269,7 +278,7 @@
       ["iv", plist("جدول المقابلات", ivs.length + " مقابلة", ivCards, ["إضافة مقابلة", "interview"])],
       ["flow", flow],
     ];
-    const side = `<div class="s-h"><h3 class="ttl-edit">نسبة إنجاز التوظيف</h3></div>
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-k="نسبة إنجاز التوظيف">نسبة إنجاز التوظيف</h3></div>
       <div class="hero">${ring(rate, "var(--g-700)", "إنجاز التوظيف", `${done} مكتمل من ${totalVac} شاغرة`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["iv", "المقابلات"], ["flow", "مراحل التوظيف"]], views, side);
@@ -285,11 +294,11 @@
     const dist = roots().map((r, i) => [r.name, tr.filter((t) => t.unit_id && rootOf(t.unit_id) === r.id).length, PALETTE[i % PALETTE.length]]);
 
     const ov = `<div class="vgrid">
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit">حالة طلبات التدريب</h3><span class="hint">من إجمالي ${tr.length}</span></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="حالة طلبات التدريب">حالة طلبات التدريب</h3><span class="hint">من إجمالي ${tr.length}</span></div>
         <div class="body">${donut([["مكتملة", done, "var(--emerald)"], ["تحت الإجراء", prog, "var(--g-600)"], ["قائم", on, "var(--g-400)"]], tr.length, "طلب", { size: 190 })}</div></div>
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit">نسبة الإنجاز من الطلبات</h3></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="نسبة الإنجاز من الطلبات">نسبة الإنجاز من الطلبات</h3></div>
         <div class="body">${ring(pct(done, tr.length), "var(--emerald)", "من الطلبات", `${done} مكتمل من ${tr.length}`, 200)}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit">توزيع المتدربين على القطاعات</h3><span class="hint">الإجمالي ${tr.length}</span></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع المتدربين على القطاعات">توزيع المتدربين على القطاعات</h3><span class="hint">الإجمالي ${tr.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
     const cards = tr.map((r) => pcard(r.name, r.university, [
@@ -298,11 +307,41 @@
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
       { form: "trainee", id: r.id, table: "trainees" })).join("");
 
-    const side = `<div class="s-h"><h3 class="ttl-edit">المحقق من المستهدف</h3></div>
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-k="المحقق من المستهدف">المحقق من المستهدف</h3></div>
       <div class="hero">${ring(pct(tr.length, target), "var(--g-700)", "من المستهدف", `${tr.length} من مستهدف ${target}`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tt", "المتدربون"]],
       [["ov", ov], ["tt", plist("جدول المتدربين", tr.length + " متدرب", cards, ["إضافة متدرب", "trainee"])]], side);
+  }
+
+  // طلبات تمهير
+  function pageTamheer() {
+    const tm = rows("tamheer");
+    const target = Number((db().settings.find((s) => s.key === "tamheer_target") || {}).value || 40);
+    const done = tm.filter((t) => t.status === "مكتمل").length;
+    const prog = tm.filter((t) => t.status === "تحت الإجراء").length;
+    const on = tm.filter((t) => t.status === "قائم").length;
+    const dist = roots().map((r, i) => [r.name, tm.filter((t) => t.unit_id && rootOf(t.unit_id) === r.id).length, PALETTE[i % PALETTE.length]]);
+
+    const ov = `<div class="vgrid">
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="حالة طلبات تمهير">حالة طلبات تمهير</h3><span class="hint">من إجمالي ${tm.length}</span></div>
+        <div class="body">${donut([["مكتملة", done, "var(--emerald)"], ["تحت الإجراء", prog, "var(--g-600)"], ["قائم", on, "var(--g-400)"]], tm.length, "طلب", { size: 190 })}</div></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="نسبة الإنجاز من طلبات تمهير">نسبة الإنجاز من الطلبات</h3></div>
+        <div class="body">${ring(pct(done, tm.length), "var(--emerald)", "من الطلبات", `${done} مكتمل من ${tm.length}`, 200)}</div></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع متدربي تمهير على القطاعات">توزيع متدربي تمهير على القطاعات</h3><span class="hint">الإجمالي ${tm.length}</span></div>
+        <div class="body">${colbars(dist)}</div></div></div>`;
+
+    const cards = tm.map((r) => pcard(r.name, r.university, [
+      ["المشرف التدريبي", r.supervisor], ["الإدارة", (unitById(r.unit_id) || {}).name],
+      ["بداية البرنامج", r.start_date], ["نهاية البرنامج", r.end_date], ["رقم الجوال", r.phone],
+    ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
+      { form: "tamheer", id: r.id, table: "tamheer" })).join("");
+
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-k="المحقق من مستهدف تمهير">المحقق من المستهدف</h3></div>
+      <div class="hero">${ring(pct(tm.length, target), "var(--g-700)", "من المستهدف", `${tm.length} من مستهدف ${target}`, 290)}</div>`;
+
+    return tabbed([["ov", "نظرة عامة"], ["tm", "المتقدمون"]],
+      [["ov", ov], ["tm", plist("جدول طلبات تمهير", tm.length + " طلب", cards, ["إضافة طلب تمهير", "tamheer"])]], side);
   }
 
   // الاستقالات
@@ -316,16 +355,16 @@
     const top = dist.slice().sort((a, b) => b[1] - a[1])[0] || ["—", 0];
 
     const ov = `<div class="vgrid">
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit">حسب الدرجة</h3></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="حسب الدرجة">حسب الدرجة</h3></div>
         <div class="body">${gsegs.length ? donut(gsegs, rs.length, "استقالة", { size: 190 }) : '<div class="empty">لا توجد بيانات</div>'}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit">توزيع الاستقالات حسب القطاع</h3><span class="hint">الإجمالي ${rs.length}</span></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع الاستقالات حسب القطاع">توزيع الاستقالات حسب القطاع</h3><span class="hint">الإجمالي ${rs.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
     const cards = rs.map((r) => pcard(r.name, r.position, [
       ["الدرجة", r.grade], ["الإدارة", (unitById(r.unit_id) || {}).name], ["آخر يوم عمل", r.last_day], ["السبب", r.reason],
     ], null, { form: "resignation", id: r.id, table: "resignations" })).join("");
 
-    const side = `<div class="s-h"><h3 class="ttl-edit">عدد الاستقالات</h3></div>
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-k="عدد الاستقالات">عدد الاستقالات</h3></div>
       <div class="hero"><div class="hero-circle"><span class="hero-n">${rs.length}</span><span class="hero-l">استقالة حتى اليوم</span></div>
       <div class="hero-facts"><div class="hf"><span>استقالات الشهر الحالي</span><b>${thisMonth}</b></div>
       <div class="hf"><span>أعلى قطاع</span><b>${esc(top[0])} · ${top[1]}</b></div></div></div>`;
@@ -403,7 +442,7 @@
   /* ---------------- الهيكل العام ---------------- */
   function shell(title, body) {
     const nav = [["index", "الرئيسية", "home"], ["recruitment", "التوظيف", "users"], ["training", "التدريب", "cap"],
-    ["resignations", "الاستقالات", "exit"], ["sectors", "القطاعات", "office"]];
+    ["tamheer", "طلبات تمهير", "clip"], ["resignations", "الاستقالات", "exit"], ["sectors", "القطاعات", "office"]];
     const rail = nav.map(([p, t, ic]) => `<a href="#/${p === "index" ? "" : p}" class="${state.page === p ? "on" : ""}"><span class="tip">${t}</span>${icon(ic)}</a>`).join("");
 
     const unitOpts = `<option value="">الكل</option>` + units().map((u) =>
@@ -502,6 +541,19 @@
         ["end_date", "نهاية التدريب", "text", r.end_date, null, false],
         ["phone", "رقم الجوال", "text", r.phone, null, false],
         ["status", "حالة التدريب", "select", r.status, opts(["قائم", "تحت الإجراء", "مكتمل"], r.status), false],
+      ],
+    },
+    tamheer: {
+      table: "tamheer", title: "بيانات طلب تمهير",
+      fields: (r) => [
+        ["name", "اسم المتقدم", "text", r.name, null, false],
+        ["university", "الجامعة", "text", r.university, null, false],
+        ["supervisor", "المشرف التدريبي", "text", r.supervisor, null, false],
+        ["unit_id", "القطاع / الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
+        ["start_date", "بداية البرنامج", "text", r.start_date, null, false],
+        ["end_date", "نهاية البرنامج", "text", r.end_date, null, false],
+        ["phone", "رقم الجوال", "text", r.phone, null, false],
+        ["status", "حالة الطلب", "select", r.status, opts(["قائم", "تحت الإجراء", "مكتمل"], r.status), false],
       ],
     },
     resignation: {
@@ -631,6 +683,7 @@
     index: { title: "اللوحة الرئيسية", render: pageIndex },
     recruitment: { title: "التوظيف", render: pageRecruitment },
     training: { title: "التدريب", render: pageTraining },
+    tamheer: { title: "طلبات تمهير", render: pageTamheer },
     resignations: { title: "الاستقالات", render: pageResignations },
     sectors: { title: "القطاعات", render: pageSectors },
   };

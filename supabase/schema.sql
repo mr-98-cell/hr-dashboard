@@ -128,6 +128,22 @@ create table if not exists public.trainees (
   created_at timestamptz not null default now()
 );
 
+-- ------------------------- طلبات تمهير -------------------------
+create table if not exists public.tamheer (
+  id         text primary key default gen_random_uuid()::text,
+  name       text not null,
+  university text,
+  supervisor text,
+  unit_id    text references public.org_units (id) on delete set null,
+  start_date text,
+  end_date   text,
+  phone      text,
+  status     text default 'قائم' check (status in ('قائم', 'تحت الإجراء', 'مكتمل')),
+  year       integer,
+  month      integer,
+  created_at timestamptz not null default now()
+);
+
 -- ------------------------- الاستقالات -------------------------
 create table if not exists public.resignations (
   id         text primary key default gen_random_uuid()::text,
@@ -151,6 +167,8 @@ create table if not exists public.settings (
 
 insert into public.settings (key, value) values ('training_target', '80')
   on conflict (key) do nothing;
+insert into public.settings (key, value) values ('tamheer_target', '40')
+  on conflict (key) do nothing;
 insert into public.settings (key, value) values ('titles', '{}')
   on conflict (key) do nothing;
 
@@ -162,7 +180,7 @@ do $$
 declare t text;
 begin
   foreach t in array array['profiles','org_units','vacancies','candidates','interviews',
-                           'onboarding','trainees','resignations','settings']
+                           'onboarding','trainees','tamheer','resignations','settings']
   loop
     execute format('alter table public.%I enable row level security', t);
 
