@@ -290,15 +290,22 @@
     const ivSch = ivs.filter((i) => i.status === "مجدولة").length;
 
     // ثلاث دوائر: الإجمالي · قيد الإجراء · المكتملة — كل واحدة تُقارن بالإجمالي
-    const ivRing = (label, key, n, col) => `<div class="panel"><div class="p-h">
-        <h3 class="ttl-edit" data-tk="1" data-k="${label}">${label}</h3><span class="hint">من ${ivs.length}</span></div>
-      <div class="body">${donut([[label, n, col], ["الباقي", Math.max(ivs.length - n, 0), "var(--g-100)"]], n, key, { size: 176 })}</div></div>`;
-    const ov = `<div class="vgrid">
+    // مصادر المرشحين — من أين يأتي المتقدمون فعلًا
+    const srcSegs = (() => {
+      const m = {};
+      ivs.forEach((r) => { const k = (r.cand_source || "").trim(); if (k) m[k] = (m[k] || 0) + 1; });
+      return Object.keys(m).sort((a, b) => m[b] - m[a]).map((k, i) => [k, m[k], PALETTE[i % PALETTE.length]]);
+    })();
+    const ov = `<div class="vgrid three">
       <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="عدد طلبات المقابلات">${esc(t("عدد طلبات المقابلات"))}</h3></div>
         <div class="body">${donut([["مجدولة", ivSch, "var(--amber)"], ["مكتملة", ivDone, "var(--g-800)"], ["مرفوضة", ivRej, "var(--red)"]], ivs.length, "مقابلة", { size: 176 })}</div></div>
-      ${ivRing("قيد الإجراء", "مجدولة", ivSch, "var(--amber)")}
-      ${ivRing("المكتملة", "مكتملة", ivDone, "var(--g-800)")}
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="الوظائف الشاغرة حسب القطاع">${esc(t("الوظائف الشاغرة حسب القطاع"))}</h3><span class="hint">الإجمالي ${totalVac}</span></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="وظائف قيد الإجراء">${esc(t("وظائف قيد الإجراء"))}</h3><span class="hint">من ${ivs.length}</span></div>
+        <div class="body">${donut([["المكتمل", ivDone, "var(--g-800)"], ["الباقي", Math.max(ivs.length - ivDone, 0), "var(--g-100)"]], ivs.length - ivDone, "متبقٍ", { size: 176 })}</div></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="مصادر المرشحين">${esc(t("مصادر المرشحين"))}</h3><span class="hint">${esc(t("الإجمالي"))} ${ivs.length}</span></div>
+        <div class="body">${srcSegs.length ? donut(srcSegs, ivs.length, "مرشح", { size: 176 }) : `<div class="empty">${esc(t("لا توجد بيانات"))}</div>`}</div></div>
+      </div>
+      <div class="vgrid" style="margin-top:20px">
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="الوظائف الشاغرة حسب القطاع">${esc(t("الوظائف الشاغرة حسب القطاع"))}</h3><span class="hint">${esc(t("الإجمالي"))} ${totalVac}</span></div>
         <div class="body">${colbars(bySectorVac)}</div></div></div>`;
 
     // المقابلات
@@ -973,6 +980,9 @@ ${editBtn}
     "توزيع حالة طلبات تمهير": "Tamheer requests by status",
     "توزيع الاستقالات حسب القطاع": "Resignations by department",
     "عدد طلبات المقابلات": "Interview requests", "قيد الإجراء": "In progress", "المكتملة": "Completed",
+    "وظائف قيد الإجراء": "Positions in progress", "المكتمل": "Completed", "متبقٍ": "remaining",
+    "مصادر المرشحين": "Candidate sources", "مرشح": "candidates",
+    "لينكدإن": "LinkedIn", "جدارات": "Jadarat", "بيت.كوم": "Bayt.com", "توصية": "Referral", "أخرى": "Other",
     "الوظائف الشاغرة حسب القطاع": "Vacancies by department",
     "نظرة عامة": "Overview", "المقابلات": "Interviews", "مراحل التوظيف": "Recruitment stages",
     "المتدربون": "Trainees", "المتقدمون": "Applicants", "تفاصيل الاستقالات": "Resignation details",
