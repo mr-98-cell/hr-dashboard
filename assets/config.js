@@ -30,16 +30,16 @@ window.APP_CONFIG = {
      ----------------------------------------------------------- */
 
   // مِلح التشفير — غيّره إذا أعدت توليد كل البصمات (وأعد توليدها كلها معًا)
-  AUTH_SALT: "adaa-hr-85LwqbXKxGk6",
+  AUTH_SALT: "adaa-hr-YxOqhfCkba59",
 
   // عدد دورات الاشتقاق — كلما زاد صعُب تخمين الرمز (لا تُنقصه)
   AUTH_ITERATIONS: 600000,
 
   // بصمات الرموز (base64) — وليست الرموز نفسها
   ACCESS_CODE_HASHES: {
-    owner:  "F4lN0ZLNVG82MKNnsueLV8bVk4si1oje5L96jDuFhH8=",
-    editor: "kWRzvZnfxYZvBEbGQlrfBeavM1vI7T7v2KwGdm5oMJQ=",
-    viewer: "OrVJNOTbBA5vZh4uEeOBjxZ33QDwpSDvAhAy/Rg2F18=",
+    owner:  "ro+OpMEpdWCquTBLz+w1LArmFr9zOcO3JxAfgk5xhtc=",
+    editor: "VI9g7CPn3o/qJOAZso4u8yMPCGT3+qqOUwEZQo8itVU=",
+    viewer: "Px5xwYKGSDOvtCFZPMGuTbrz2ssQOzxRzxVMcBNGOPs=",
   },
 
   /* رموز صريحة (اختياري — اتركها فارغة).

@@ -159,6 +159,9 @@ h1,h2,h3,h4{font-family:"Noto Kufi Arabic","Noto Sans Arabic",sans-serif}
 .d3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .dbox{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center}
 .dbox .bt{font-size:13px;font-weight:800;color:var(--g-900);margin-bottom:10px;font-family:"Noto Kufi Arabic"}
+.dbox.occ{background:linear-gradient(160deg,#fff,var(--g-50));border-color:var(--g-400)}
+.dchip.hot{background:var(--g-800);border-color:var(--g-800);color:#fff}
+.dchip.hot b{color:#fff}
 .split{display:flex;height:34px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
 .split i{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12.5px;font-weight:800;font-family:"Noto Kufi Arabic";font-style:normal}
 .slg{display:flex;justify-content:center;gap:16px;margin-top:10px;font-size:11.5px;color:var(--ink-2);flex-wrap:wrap}
@@ -267,6 +270,20 @@ body.edit .editbar{display:flex}
 .sum{flex:1;min-width:118px;background:var(--g-50);border:1px solid var(--line);border-radius:13px;padding:11px 12px;text-align:center}
 .sum .n{font-family:"Noto Kufi Arabic";font-weight:800;font-size:21px;color:var(--g-800);line-height:1}
 .sum .l{font-size:11px;color:var(--ink-2);margin-top:5px}
+.sum{cursor:pointer;transition:.15s}
+.sum:hover{border-color:var(--g-400)}
+.sum.on{background:var(--g-800);border-color:var(--g-800)}
+.sum.on .n{color:#fff}
+.sum.on .l{color:rgba(255,255,255,.85)}
+.stagenote{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--g-50);
+  border:1px solid var(--line);border-radius:11px;padding:9px 13px;margin-bottom:14px;font-size:12.5px;color:var(--ink-2)}
+.statchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.sc{display:flex;align-items:center;gap:6px;background:var(--g-50);border:1px solid var(--line);
+  border-radius:20px;padding:6px 13px;font-size:12px;color:var(--ink-2);cursor:pointer;transition:.15s}
+.sc:hover{border-color:var(--g-400)}
+.sc b{font-family:"Noto Kufi Arabic";color:var(--g-800)}
+.sc.on{background:var(--g-800);border-color:var(--g-800);color:#fff}
+.sc.on b{color:#fff}
 .acc{border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden;background:#fff}
 .acc .head{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer}
 .acc .head:hover{background:var(--g-50)}
@@ -520,16 +537,16 @@ window.APP_CONFIG = {
      ----------------------------------------------------------- */
 
   // مِلح التشفير — غيّره إذا أعدت توليد كل البصمات (وأعد توليدها كلها معًا)
-  AUTH_SALT: "adaa-hr-85LwqbXKxGk6",
+  AUTH_SALT: "adaa-hr-YxOqhfCkba59",
 
   // عدد دورات الاشتقاق — كلما زاد صعُب تخمين الرمز (لا تُنقصه)
   AUTH_ITERATIONS: 600000,
 
   // بصمات الرموز (base64) — وليست الرموز نفسها
   ACCESS_CODE_HASHES: {
-    owner:  "F4lN0ZLNVG82MKNnsueLV8bVk4si1oje5L96jDuFhH8=",
-    editor: "kWRzvZnfxYZvBEbGQlrfBeavM1vI7T7v2KwGdm5oMJQ=",
-    viewer: "OrVJNOTbBA5vZh4uEeOBjxZ33QDwpSDvAhAy/Rg2F18=",
+    owner:  "ro+OpMEpdWCquTBLz+w1LArmFr9zOcO3JxAfgk5xhtc=",
+    editor: "VI9g7CPn3o/qJOAZso4u8yMPCGT3+qqOUwEZQo8itVU=",
+    viewer: "Px5xwYKGSDOvtCFZPMGuTbrz2ssQOzxRzxVMcBNGOPs=",
   },
 
   /* رموز صريحة (اختياري — اتركها فارغة).
@@ -572,57 +589,91 @@ window.APP_CONFIG = {
   /* ---------- بيانات ابتدائية ---------- */
   const SEED = {
     org_units: [
-      { id: "s1", name: "قطاع الأداء", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
-      { id: "s1a", name: "إدارة قياس الأداء", parent_id: "s1", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
-      { id: "s1a1", name: "قسم المؤشرات", parent_id: "s1a", approved: 11, filled: 10, junior: 7, senior: 3, male: 6, female: 4 },
-      { id: "s1a2", name: "قسم التقارير", parent_id: "s1a", approved: 9, filled: 8, junior: 5, senior: 3, male: 4, female: 4 },
-      { id: "s1b", name: "إدارة تطوير الأداء", parent_id: "s1", approved: 16, filled: 14, junior: 8, senior: 6, male: 8, female: 6 },
-      { id: "s1c", name: "إدارة تحليل البيانات", parent_id: "s1", approved: 12, filled: 10, junior: 6, senior: 4, male: 7, female: 3 },
-      { id: "s2", name: "قطاع الخدمات المشتركة", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
-      { id: "s2a", name: "إدارة الموارد البشرية", parent_id: "s2", approved: 12, filled: 11, junior: 7, senior: 4, male: 5, female: 6 },
-      { id: "s2b", name: "إدارة تقنية المعلومات", parent_id: "s2", approved: 13, filled: 12, junior: 8, senior: 4, male: 8, female: 4 },
-      { id: "s2c", name: "إدارة الشؤون المالية", parent_id: "s2", approved: 8, filled: 7, junior: 4, senior: 3, male: 4, female: 3 },
-      { id: "s2d", name: "إدارة المشتريات والعقود", parent_id: "s2", approved: 6, filled: 5, junior: 3, senior: 2, male: 2, female: 3 },
-      { id: "s3", name: "الإدارة القانونية", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
-      { id: "s3a", name: "قسم العقود", parent_id: "s3", approved: 8, filled: 6, junior: 3, senior: 3, male: 4, female: 2 },
-      { id: "s3b", name: "قسم التقاضي", parent_id: "s3", approved: 6, filled: 5, junior: 2, senior: 3, male: 3, female: 2 },
-      { id: "s4", name: "مكتب المدير العام", parent_id: null, approved: 9, filled: 8, junior: 3, senior: 5, male: 5, female: 3 },
-      { id: "s5", name: "إدارة الحوكمة والمخاطر والالتزام", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
-      { id: "s5a", name: "قسم الحوكمة", parent_id: "s5", approved: 9, filled: 7, junior: 4, senior: 3, male: 4, female: 3 },
-      { id: "s5b", name: "قسم المخاطر والالتزام", parent_id: "s5", approved: 10, filled: 8, junior: 5, senior: 3, male: 4, female: 4 },
-      { id: "s5c", name: "مكتب البيانات", parent_id: "s5", approved: 8, filled: 7, junior: 4, senior: 3, male: 4, female: 3 },
-      { id: "s6", name: "مكتب التحول الاستراتيجي", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
-      { id: "s6a", name: "قسم إدارة المشاريع", parent_id: "s6", approved: 12, filled: 10, junior: 7, senior: 3, male: 6, female: 4 },
-      { id: "s6b", name: "قسم التخطيط", parent_id: "s6", approved: 9, filled: 7, junior: 4, senior: 3, male: 4, female: 3 },
-      { id: "s7", name: "المراجعة الداخلية", parent_id: null, approved: 18, filled: 15, junior: 8, senior: 7, male: 9, female: 6 },
+      { id: "perf", name: "إدارة الأداء", name_en: "Performance Management", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-q", name: "إدارة جودة الأداء", name_en: "Performance Quality", parent_id: "perf", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-adv", name: "الدعم الاستشاري", name_en: "Advisory Support", parent_id: "perf", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-adv-1", name: "المشاريع الخاصة", name_en: "Special Projects", parent_id: "perf-adv", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-adv-2", name: "دعم إدارة الأداء", name_en: "Performance Management Support", parent_id: "perf-adv", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-cap", name: "تنمية القدرات المؤسسية", name_en: "Institutional Capability Development", parent_id: "perf", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-cap-1", name: "تقييم ممارسات أداء الأجهزة", name_en: "Entity Performance Practices Assessment", parent_id: "perf-cap", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-cap-2", name: "تنمية قدرات الأجهزة", name_en: "Entity Capability Development", parent_id: "perf-cap", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ana", name: "التحاليل المتقدمة والتقارير", name_en: "Advanced Analytics & Reporting", parent_id: "perf", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ana-1", name: "التحاليل المتقدمة", name_en: "Advanced Analytics", parent_id: "perf-ana", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ana-2", name: "التقارير", name_en: "Reporting", parent_id: "perf-ana", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-dev", name: "تطوير الأداء", name_en: "Performance Development", parent_id: "perf", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-dev-1", name: "الاستراتيجيات والتخطيط", name_en: "Strategy & Planning", parent_id: "perf-dev", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-dev-2", name: "إدارة مخاطر الأداء", name_en: "Performance Risk Management", parent_id: "perf-dev", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-dev-3", name: "إدارة تجربة المستفيد", name_en: "Beneficiary Experience", parent_id: "perf-dev", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-dev-4", name: "إدارة المنتجات الخاصة", name_en: "Special Products", parent_id: "perf-dev", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ops", name: "عمليات إدارة الأداء", name_en: "Performance Operations", parent_id: "perf", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ops-1", name: "عمليات القطاع المالي والاقتصادي", name_en: "Financial & Economic Sector Operations", parent_id: "perf-ops", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ops-2", name: "عمليات قطاع الشؤون الأمنية والعدلية", name_en: "Security & Judicial Affairs Sector Operations", parent_id: "perf-ops", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ops-3", name: "عمليات قطاع الصناعة والتنمية المناطقية", name_en: "Industry & Regional Development Sector Operations", parent_id: "perf-ops", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ops-4", name: "عمليات قطاع البنية التحتية", name_en: "Infrastructure Sector Operations", parent_id: "perf-ops", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ops-5", name: "عمليات قطاع جودة الحياة", name_en: "Quality of Life Sector Operations", parent_id: "perf-ops", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ops-6", name: "عمليات قطاع التنمية الاجتماعية", name_en: "Social Development Sector Operations", parent_id: "perf-ops", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "perf-ops-7", name: "دعم عمليات الأداء", name_en: "Performance Operations Support", parent_id: "perf-ops", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared", name: "الخدمات المشتركة", name_en: "Shared Services", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-proc", name: "المشتريات والعقود", name_en: "Procurement & Contracts", parent_id: "shared", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-adm", name: "الشؤون الإدارية", name_en: "Administrative Affairs", parent_id: "shared", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-fin", name: "المالية", name_en: "Finance", parent_id: "shared", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-fin-1", name: "المحاسبة", name_en: "Accounting", parent_id: "shared-fin", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-fin-2", name: "الرقابة والتقارير", name_en: "Control & Reporting", parent_id: "shared-fin", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-it", name: "التحول الرقمي وتقنية المعلومات", name_en: "Digital Transformation & IT", parent_id: "shared", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-it-1", name: "تقنية المعلومات", name_en: "Information Technology", parent_id: "shared-it", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-it-2", name: "هندسة البيانات", name_en: "Data Engineering", parent_id: "shared-it", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-it-3", name: "التحول الرقمي", name_en: "Digital Transformation", parent_id: "shared-it", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-hc", name: "رأس المال البشري", name_en: "Human Capital", parent_id: "shared", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-hc-1", name: "عمليات الموارد البشرية", name_en: "HR Operations", parent_id: "shared-hc", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-hc-2", name: "إدارة واستقطاب وتطوير المواهب", name_en: "Talent Acquisition & Development", parent_id: "shared-hc", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-hc-3", name: "ثقافة العمل والانخراط الوظيفي", name_en: "Workplace Culture & Engagement", parent_id: "shared-hc", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-hc-4", name: "تخطيط وتنمية الموارد البشرية", name_en: "HR Planning & Development", parent_id: "shared-hc", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "grc", name: "الحوكمة والمخاطر والالتزام ومكتب البيانات", name_en: "Governance, Risk, Compliance & Data Office", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "grc-1", name: "الحوكمة والمخاطر والالتزام واستمرارية الأعمال", name_en: "Governance, Risk, Compliance & Business Continuity", parent_id: "grc", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "grc-2", name: "الأمن السيبراني", name_en: "Cybersecurity", parent_id: "grc", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "grc-3", name: "مكتب إدارة البيانات", name_en: "Data Management Office", parent_id: "grc", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "strat", name: "التحول الاستراتيجي", name_en: "Strategic Transformation", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "strat-1", name: "الاستراتيجية المؤسسية", name_en: "Corporate Strategy", parent_id: "strat", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "strat-2", name: "التميز المؤسسي", name_en: "Corporate Excellence", parent_id: "strat", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "strat-3", name: "مكتب إدارة المشاريع", name_en: "Project Management Office", parent_id: "strat", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "legal", name: "القانونية", name_en: "Legal", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "legal-1", name: "الاستشارات والعقود", name_en: "Legal Advisory & Contracts", parent_id: "legal", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "legal-2", name: "الامتثال والتمثيل", name_en: "Compliance & Representation", parent_id: "legal", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "gmo", name: "مكتب المدير العام", name_en: "Director General's Office", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "gmo-1", name: "المراسلات والوثائق والمحفوظات", name_en: "Correspondence, Documents & Archives", parent_id: "gmo", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "gmo-2", name: "الأعمال التنفيذية", name_en: "Executive Affairs", parent_id: "gmo", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "comm", name: "التواصل المؤسسي", name_en: "Corporate Communication", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "comm-1", name: "الإعلام والهوية المؤسسية", name_en: "Media & Corporate Identity", parent_id: "comm", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "comm-2", name: "العلاقات العامة", name_en: "Public Relations", parent_id: "comm", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "audit", name: "المراجعة الداخلية", name_en: "Internal Audit", parent_id: null, approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
     ],
 
     vacancies: [
-      { id: "v1", unit_id: "s1", title: "أخصائي تحليل بيانات", count: 9, received: 72, status: "مفتوحة", year: 2026, month: 7 },
-      { id: "v2", unit_id: "s2", title: "أخصائي مشتريات", count: 7, received: 58, status: "مفتوحة", year: 2026, month: 7 },
-      { id: "v3", unit_id: "s3", title: "مستشار قانوني", count: 4, received: 26, status: "مفتوحة", year: 2026, month: 7 },
-      { id: "v4", unit_id: "s4", title: "منسق إداري", count: 3, received: 19, status: "مفتوحة", year: 2026, month: 7 },
-      { id: "v5", unit_id: "s5", title: "أخصائي حوكمة", count: 8, received: 54, status: "مفتوحة", year: 2026, month: 7 },
-      { id: "v6", unit_id: "s6", title: "مدير مشاريع", count: 5, received: 41, status: "مفتوحة", year: 2026, month: 7 },
-      { id: "v7", unit_id: "s7", title: "مدقق داخلي", count: 6, received: 48, status: "مفتوحة", year: 2026, month: 7 },
+      { id: "v1", unit_id: "perf", title: "أخصائي تحليل بيانات", count: 9, received: 72, status: "مفتوحة", year: 2026, month: 7 },
+      { id: "v2", unit_id: "shared", title: "أخصائي مشتريات", count: 7, received: 58, status: "مفتوحة", year: 2026, month: 7 },
+      { id: "v3", unit_id: "legal", title: "مستشار قانوني", count: 4, received: 26, status: "مفتوحة", year: 2026, month: 7 },
+      { id: "v4", unit_id: "gmo", title: "منسق إداري", count: 3, received: 19, status: "مفتوحة", year: 2026, month: 7 },
+      { id: "v5", unit_id: "grc", title: "أخصائي حوكمة", count: 8, received: 54, status: "مفتوحة", year: 2026, month: 7 },
+      { id: "v6", unit_id: "strat", title: "مدير مشاريع", count: 5, received: 41, status: "مفتوحة", year: 2026, month: 7 },
+      { id: "v7", unit_id: "audit", title: "مدقق داخلي", count: 6, received: 48, status: "مفتوحة", year: 2026, month: 7 },
     ],
 
     candidates: [
-      { id: "c1", name: "ليان المطيري", position: "منسق موارد بشرية", unit_id: "s2a", stage: 4, note: "تم توقيع العرض النهائي", year: 2026, month: 7 },
-      { id: "c2", name: "سارة الدوسري", position: "أخصائي تحليل بيانات", unit_id: "s1c", stage: 1, note: "العرض الأولي مرسل · بانتظار الرد", year: 2026, month: 7 },
-      { id: "c3", name: "لمى العتيبي", position: "مدير مشاريع", unit_id: "s6a", stage: 2, note: "المسح الأمني قيد المراجعة", year: 2026, month: 7 },
-      { id: "c4", name: "فيصل القحطاني", position: "مستشار قانوني", unit_id: "s3a", stage: 3, note: "الفحص الطبي مكتمل", year: 2026, month: 7 },
-      { id: "c5", name: "محمد البلوي", position: "مدقق داخلي", unit_id: "s7", stage: 3, note: "الفحص الطبي محجوز ٣٠ يوليو", year: 2026, month: 7 },
-      { id: "c6", name: "عبدالعزيز الحارثي", position: "أخصائي أنظمة", unit_id: "s2b", stage: 5, note: "مباشرة رسمية ١٠ أغسطس", year: 2026, month: 7 },
-      { id: "c7", name: "نايف الرشيدي", position: "محلل مالي", unit_id: "s2c", stage: 4, note: "العرض النهائي مرسل · بانتظار الرد", year: 2026, month: 7 },
+      { id: "c1", name: "ليان المطيري", position: "منسق موارد بشرية", unit_id: "shared-hc", stage: 4, note: "تم توقيع العرض النهائي", year: 2026, month: 7 },
+      { id: "c2", name: "سارة الدوسري", position: "أخصائي تحليل بيانات", unit_id: "perf-ana-1", stage: 1, note: "العرض الأولي مرسل · بانتظار الرد", year: 2026, month: 7 },
+      { id: "c3", name: "لمى العتيبي", position: "مدير مشاريع", unit_id: "strat-3", stage: 2, note: "المسح الأمني قيد المراجعة", year: 2026, month: 7 },
+      { id: "c4", name: "فيصل القحطاني", position: "مستشار قانوني", unit_id: "legal-1", stage: 3, note: "الفحص الطبي مكتمل", year: 2026, month: 7 },
+      { id: "c5", name: "محمد البلوي", position: "مدقق داخلي", unit_id: "audit", stage: 3, note: "الفحص الطبي محجوز ٣٠ يوليو", year: 2026, month: 7 },
+      { id: "c6", name: "عبدالعزيز الحارثي", position: "أخصائي أنظمة", unit_id: "shared-it-1", stage: 5, note: "مباشرة رسمية ١٠ أغسطس", year: 2026, month: 7 },
+      { id: "c7", name: "نايف الرشيدي", position: "محلل مالي", unit_id: "shared-fin", stage: 4, note: "العرض النهائي مرسل · بانتظار الرد", year: 2026, month: 7 },
     ],
 
     interviews: [
-      { id: "i1", candidate: "سارة الدوسري", position: "أخصائي تحليل بيانات", unit_id: "s1", owner: "أ. خالد العمري", status: "مجدولة", date: "٢٨ يوليو", day: "الثلاثاء", time: "١٠:٠٠ ص", job_source: "توظيف مباشر", cand_source: "لينكدإن", cand_source_name: "", hr_rating: "ممتاز", mgr_rating: "جيد جدًا", year: 2026, month: 7 },
-      { id: "i2", candidate: "فيصل القحطاني", position: "مستشار قانوني", unit_id: "s3", owner: "أ. منى الحربي", status: "تمت", date: "٢٦ يوليو", day: "الأحد", time: "١٢:٣٠ م", job_source: "إعلان داخلي", cand_source: "توصية", cand_source_name: "أ. سعد", hr_rating: "جيد جدًا", mgr_rating: "ممتاز", year: 2026, month: 7 },
-      { id: "i3", candidate: "عبدالله الزهراني", position: "أخصائي مشتريات", unit_id: "s2", owner: "أ. نورة السالم", status: "مرفوضة", date: "٢٤ يوليو", day: "الخميس", time: "٩:٠٠ ص", job_source: "منصة توظيف", cand_source: "جدارات", cand_source_name: "", hr_rating: "مقبول", mgr_rating: "ضعيف", year: 2026, month: 7 },
-      { id: "i4", candidate: "لمى العتيبي", position: "مدير مشاريع", unit_id: "s6", owner: "أ. ريم الشمري", status: "مجدولة", date: "٢٩ يوليو", day: "الأربعاء", time: "١١:٠٠ ص", job_source: "توظيف مباشر", cand_source: "لينكدإن", cand_source_name: "", hr_rating: "", mgr_rating: "", year: 2026, month: 7 },
-      { id: "i5", candidate: "محمد البلوي", position: "مدقق داخلي", unit_id: "s7", owner: "أ. طارق الغامدي", status: "تمت", date: "٢٥ يوليو", day: "الجمعة", time: "١٠:٣٠ ص", job_source: "إعلان خارجي", cand_source: "بيت.كوم", cand_source_name: "", hr_rating: "ممتاز", mgr_rating: "جيد", year: 2026, month: 7 },
+      { id: "i1", candidate: "سارة الدوسري", position: "أخصائي تحليل بيانات", unit_id: "perf", owner: "أ. خالد العمري", status: "مجدولة", date: "٢٨ يوليو", day: "الثلاثاء", time: "١٠:٠٠ ص", job_source: "توظيف مباشر", cand_source: "لينكدإن", cand_source_name: "", hr_rating: "ممتاز", mgr_rating: "جيد جدًا", year: 2026, month: 7 },
+      { id: "i2", candidate: "فيصل القحطاني", position: "مستشار قانوني", unit_id: "legal", owner: "أ. منى الحربي", status: "تمت", date: "٢٦ يوليو", day: "الأحد", time: "١٢:٣٠ م", job_source: "إعلان داخلي", cand_source: "توصية", cand_source_name: "أ. سعد", hr_rating: "جيد جدًا", mgr_rating: "ممتاز", year: 2026, month: 7 },
+      { id: "i3", candidate: "عبدالله الزهراني", position: "أخصائي مشتريات", unit_id: "shared", owner: "أ. نورة السالم", status: "مرفوضة", date: "٢٤ يوليو", day: "الخميس", time: "٩:٠٠ ص", job_source: "منصة توظيف", cand_source: "جدارات", cand_source_name: "", hr_rating: "مقبول", mgr_rating: "ضعيف", year: 2026, month: 7 },
+      { id: "i4", candidate: "لمى العتيبي", position: "مدير مشاريع", unit_id: "strat", owner: "أ. ريم الشمري", status: "مجدولة", date: "٢٩ يوليو", day: "الأربعاء", time: "١١:٠٠ ص", job_source: "توظيف مباشر", cand_source: "لينكدإن", cand_source_name: "", hr_rating: "", mgr_rating: "", year: 2026, month: 7 },
+      { id: "i5", candidate: "محمد البلوي", position: "مدقق داخلي", unit_id: "audit", owner: "أ. طارق الغامدي", status: "تمت", date: "٢٥ يوليو", day: "الجمعة", time: "١٠:٣٠ ص", job_source: "إعلان خارجي", cand_source: "بيت.كوم", cand_source_name: "", hr_rating: "ممتاز", mgr_rating: "جيد", year: 2026, month: 7 },
     ],
 
     onboarding: [
@@ -631,26 +682,26 @@ window.APP_CONFIG = {
     ],
 
     trainees: [
-      { id: "t1", name: "سلمان العنزي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "s1", start_date: "١ يوليو", end_date: "٣١ أغسطس", phone: "0551234567", status: "قائم", year: 2026, month: 7 },
-      { id: "t2", name: "جواهر الفهد", supervisor: "أ. منى الحربي", university: "جامعة الأميرة نورة", unit_id: "s3", start_date: "١٥ يونيو", end_date: "١٥ سبتمبر", phone: "0559876543", status: "قائم", year: 2026, month: 6 },
-      { id: "t3", name: "راكان الدوسري", supervisor: "أ. نورة السالم", university: "جامعة الملك فهد", unit_id: "s2", start_date: "١ أغسطس", end_date: "٣٠ سبتمبر", phone: "0501112223", status: "تحت الإجراء", year: 2026, month: 8 },
-      { id: "t4", name: "دانة القحطاني", supervisor: "أ. ريم الشمري", university: "جامعة الإمام", unit_id: "s6", start_date: "١٠ يوليو", end_date: "١٠ أكتوبر", phone: "0533334445", status: "قائم", year: 2026, month: 7 },
-      { id: "t5", name: "عبدالرحمن الشهري", supervisor: "أ. طارق الغامدي", university: "جامعة الملك عبدالعزيز", unit_id: "s7", start_date: "٢٠ يونيو", end_date: "٢٠ سبتمبر", phone: "0544445556", status: "مكتمل", year: 2026, month: 6 },
+      { id: "t1", name: "سلمان العنزي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "perf", start_date: "١ يوليو", end_date: "٣١ أغسطس", phone: "0551234567", status: "قائم", year: 2026, month: 7 },
+      { id: "t2", name: "جواهر الفهد", supervisor: "أ. منى الحربي", university: "جامعة الأميرة نورة", unit_id: "legal", start_date: "١٥ يونيو", end_date: "١٥ سبتمبر", phone: "0559876543", status: "قائم", year: 2026, month: 6 },
+      { id: "t3", name: "راكان الدوسري", supervisor: "أ. نورة السالم", university: "جامعة الملك فهد", unit_id: "shared", start_date: "١ أغسطس", end_date: "٣٠ سبتمبر", phone: "0501112223", status: "تحت الإجراء", year: 2026, month: 8 },
+      { id: "t4", name: "دانة القحطاني", supervisor: "أ. ريم الشمري", university: "جامعة الإمام", unit_id: "strat", start_date: "١٠ يوليو", end_date: "١٠ أكتوبر", phone: "0533334445", status: "قائم", year: 2026, month: 7 },
+      { id: "t5", name: "عبدالرحمن الشهري", supervisor: "أ. طارق الغامدي", university: "جامعة الملك عبدالعزيز", unit_id: "audit", start_date: "٢٠ يونيو", end_date: "٢٠ سبتمبر", phone: "0544445556", status: "مكتمل", year: 2026, month: 6 },
     ],
 
     tamheer: [
-      { id: "tm1", name: "فهد الحربي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "s1", start_date: "١ يوليو", end_date: "٣١ ديسمبر", phone: "0553334445", status: "قائم", year: 2026, month: 7 },
-      { id: "tm2", name: "نورة الشمري", supervisor: "أ. نورة السالم", university: "جامعة الأميرة نورة", unit_id: "s2", start_date: "١ يونيو", end_date: "٣٠ نوفمبر", phone: "0556667778", status: "قائم", year: 2026, month: 6 },
-      { id: "tm3", name: "تركي المالكي", supervisor: "أ. منى الحربي", university: "جامعة الملك فهد", unit_id: "s5", start_date: "١٥ أغسطس", end_date: "١٥ فبراير", phone: "0502223334", status: "تحت الإجراء", year: 2026, month: 8 },
-      { id: "tm4", name: "شهد العتيبي", supervisor: "أ. ريم الشمري", university: "جامعة الملك عبدالعزيز", unit_id: "s6", start_date: "١ يوليو", end_date: "٣١ ديسمبر", phone: "0534445556", status: "قائم", year: 2026, month: 7 },
-      { id: "tm5", name: "بدر الزهراني", supervisor: "أ. طارق الغامدي", university: "جامعة الإمام", unit_id: "s7", start_date: "١ مايو", end_date: "٣١ أكتوبر", phone: "0545556667", status: "مكتمل", year: 2026, month: 5 },
+      { id: "tm1", name: "فهد الحربي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "perf", start_date: "١ يوليو", end_date: "٣١ ديسمبر", phone: "0553334445", status: "قائم", year: 2026, month: 7 },
+      { id: "tm2", name: "نورة الشمري", supervisor: "أ. نورة السالم", university: "جامعة الأميرة نورة", unit_id: "shared", start_date: "١ يونيو", end_date: "٣٠ نوفمبر", phone: "0556667778", status: "قائم", year: 2026, month: 6 },
+      { id: "tm3", name: "تركي المالكي", supervisor: "أ. منى الحربي", university: "جامعة الملك فهد", unit_id: "grc", start_date: "١٥ أغسطس", end_date: "١٥ فبراير", phone: "0502223334", status: "تحت الإجراء", year: 2026, month: 8 },
+      { id: "tm4", name: "شهد العتيبي", supervisor: "أ. ريم الشمري", university: "جامعة الملك عبدالعزيز", unit_id: "strat", start_date: "١ يوليو", end_date: "٣١ ديسمبر", phone: "0534445556", status: "قائم", year: 2026, month: 7 },
+      { id: "tm5", name: "بدر الزهراني", supervisor: "أ. طارق الغامدي", university: "جامعة الإمام", unit_id: "audit", start_date: "١ مايو", end_date: "٣١ أكتوبر", phone: "0545556667", status: "مكتمل", year: 2026, month: 5 },
     ],
 
     resignations: [
-      { id: "r1", name: "ماجد السبيعي", position: "محلل نظم", grade: "الثامنة", unit_id: "s1", last_day: "١٥ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
-      { id: "r2", name: "هيفاء المالكي", position: "أخصائي تسويق", grade: "السابعة", unit_id: "s2", last_day: "٣١ يوليو ٢٠٢٦", reason: "", year: 2026, month: 7 },
-      { id: "r3", name: "بندر العتيبي", position: "مدير إدارة", grade: "التاسعة", unit_id: "s2", last_day: "٢٠ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
-      { id: "r4", name: "أروى الجهني", position: "منسق إداري", grade: "السادسة", unit_id: "s5", last_day: "٥ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
+      { id: "r1", name: "ماجد السبيعي", position: "محلل نظم", grade: "الثامنة", unit_id: "perf", last_day: "١٥ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
+      { id: "r2", name: "هيفاء المالكي", position: "أخصائي تسويق", grade: "السابعة", unit_id: "shared", last_day: "٣١ يوليو ٢٠٢٦", reason: "", year: 2026, month: 7 },
+      { id: "r3", name: "بندر العتيبي", position: "مدير إدارة", grade: "التاسعة", unit_id: "shared", last_day: "٢٠ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
+      { id: "r4", name: "أروى الجهني", position: "منسق إداري", grade: "السادسة", unit_id: "grc", last_day: "٥ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
     ],
 
     settings: [
@@ -905,6 +956,8 @@ window.APP_CONFIG = {
     node: "root",
     user: null,
     filters: { unit: "", year: 2026, month: 0 }, // month=0 يعني كل الأشهر
+    stage: null,   // مرحلة التوظيف المختارة من شريط المراحل
+    status: {},    // الحالة المختارة لكل جدول (المتدربون/تمهير)
     edit: false,
   };
 
@@ -1038,6 +1091,16 @@ window.APP_CONFIG = {
     return `<div class="split">${bars}</div><div class="slg">${lg}</div>`;
   }
 
+  /* شريط حالات قابل للضغط — يعرض من هم في كل حالة */
+  function statusChips(key, list, statuses) {
+    const cur = state.status[key] || "";
+    const chip = (val, label, n) =>
+      `<div class="sc${cur === val ? " on" : ""}" onclick="APP.setStatus('${jsq(key)}','${jsq(val)}')">${esc(label)}<b>${n}</b></div>`;
+    return `<div class="statchips">${chip("", "الكل", list.length)}
+      ${statuses.map((st) => chip(st, st, list.filter((r) => r.status === st).length)).join("")}</div>`;
+  }
+  const byStatus = (key, list) => (state.status[key] ? list.filter((r) => r.status === state.status[key]) : list);
+
   /* ---------------- بطاقات الأشخاص ---------------- */
   function pcard(name, pos, metas, badge, act) {
     const m = metas.filter(([k, v]) => v && v !== "—")
@@ -1085,7 +1148,6 @@ window.APP_CONFIG = {
       ["training", "cap", trainees.length, "طلبات التدريب"],
       ["tamheer", "group", tamheer.length, "طلبات تمهير"],
       ["resignations", "exit", resg.length, "الاستقالات"],
-      ["recruitment", "check", pct(done, totalVac) + "%", "نسبة إنجاز التوظيف"],
     ].map(([href, ic, v, l]) => `<a class="tcard" href="#/${href}"><div class="ic">${icon(ic)}</div>
       <div><div class="v">${v}</div><div class="l">${esc(l)}</div></div></a>`).join("");
 
@@ -1142,8 +1204,14 @@ window.APP_CONFIG = {
       { form: "interview", id: r.id, table: "interviews" })).join("");
 
     // المراحل
-    const sum = STAGES.slice(1).map((s, i) => `<div class="sum"><div class="n">${cands.filter((c) => c.stage >= i + 1).length}</div><div class="l">${esc(s)}</div></div>`).join("");
-    const accs = cands.map((c, i) => {
+    const atStage = (i) => cands.filter((c) => Number(c.stage) === i);
+    const sum = STAGES.map((s, i) => `<div class="sum${state.stage === i ? " on" : ""}" onclick="APP.setStage(${i})" title="اعرض من في هذه المرحلة">
+      <div class="n">${atStage(i).length}</div><div class="l">${esc(s)}</div></div>`).join("");
+    const shownCands = state.stage == null ? cands : atStage(state.stage);
+    const stageNote = state.stage == null ? "" :
+      `<div class="stagenote">تعرض الآن مرحلة «${esc(STAGES[state.stage])}» — ${shownCands.length} مرشح
+        <button class="btn btn-x" onclick="APP.setStage(${state.stage})">عرض كل المراحل</button></div>`;
+    const accs = shownCands.map((c, i) => {
       const steps = STAGES.map((s, si) => {
         const cls = si < c.stage ? "done" : si === c.stage ? "cur" : "";
         return `<div class="step ${cls}"><div class="c">${si < c.stage ? "✓" : si + 1}</div><div class="t">${esc(s)}</div></div>`;
@@ -1162,7 +1230,8 @@ window.APP_CONFIG = {
       ["الدرجة", r.grade], ["تاريخ المباشرة", r.start_date], ["الملاحظات", r.notes],
     ], null, { form: "onboarding", id: r.id, table: "onboarding" })).join("");
 
-    const flow = addCand + `<div class="sumrow">${sum}</div>` + (accs || '<div class="empty">لا يوجد مرشحون</div>') +
+    const flow = addCand + `<div class="sumrow">${sum}</div>` + stageNote +
+      (accs || '<div class="empty">لا يوجد مرشحون في هذه المرحلة</div>') +
       `<div style="margin-top:22px"></div>` + plist("مرحلة الانضمام", rows("onboarding").length + " منضم", onbCards, ["إضافة منضم", "onboarding"]);
 
     const views = [
@@ -1193,7 +1262,8 @@ window.APP_CONFIG = {
       <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع المتدربين على القطاعات">توزيع المتدربين على القطاعات</h3><span class="hint">الإجمالي ${tr.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
-    const cards = tr.map((r) => pcard(r.name, r.university, [
+    const trShown = byStatus("trainees", tr);
+    const cards = statusChips("trainees", tr, ["قائم", "تحت الإجراء", "مكتمل"]) + trShown.map((r) => pcard(r.name, r.university, [
       ["المشرف التدريبي", r.supervisor], ["الإدارة", (unitById(r.unit_id) || {}).name],
       ["بداية التدريب", r.start_date], ["نهاية التدريب", r.end_date], ["رقم الجوال", r.phone],
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
@@ -1203,7 +1273,7 @@ window.APP_CONFIG = {
       <div class="hero">${ring(pct(tr.length, target), "var(--g-700)", "من المستهدف", `${tr.length} من مستهدف ${target}`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tt", "المتدربون"]],
-      [["ov", ov], ["tt", plist("جدول المتدربين", tr.length + " متدرب", cards, ["إضافة متدرب", "trainee"])]], side);
+      [["ov", ov], ["tt", plist("جدول المتدربين", trShown.length + " متدرب", cards, ["إضافة متدرب", "trainee"])]], side);
   }
 
   // طلبات تمهير
@@ -1223,7 +1293,8 @@ window.APP_CONFIG = {
       <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع متدربي تمهير على القطاعات">توزيع متدربي تمهير على القطاعات</h3><span class="hint">الإجمالي ${tm.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
-    const cards = tm.map((r) => pcard(r.name, r.university, [
+    const tmShown = byStatus("tamheer", tm);
+    const cards = statusChips("tamheer", tm, ["قائم", "تحت الإجراء", "مكتمل"]) + tmShown.map((r) => pcard(r.name, r.university, [
       ["المشرف التدريبي", r.supervisor], ["الإدارة", (unitById(r.unit_id) || {}).name],
       ["بداية البرنامج", r.start_date], ["نهاية البرنامج", r.end_date], ["رقم الجوال", r.phone],
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
@@ -1233,7 +1304,7 @@ window.APP_CONFIG = {
       <div class="hero">${ring(pct(tm.length, target), "var(--g-700)", "من المستهدف", `${tm.length} من مستهدف ${target}`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tm", "المتقدمون"]],
-      [["ov", ov], ["tm", plist("جدول طلبات تمهير", tm.length + " طلب", cards, ["إضافة طلب تمهير", "tamheer"])]], side);
+      [["ov", ov], ["tm", plist("جدول طلبات تمهير", tmShown.length + " طلب", cards, ["إضافة طلب تمهير", "tamheer"])]], side);
   }
 
   // الاستقالات
@@ -1286,12 +1357,14 @@ window.APP_CONFIG = {
       <div class="dchip">الوظائف المعتمدة<b>${a.approved}</b></div>
       <div class="dchip">المشغولة<b>${a.filled}</b></div>
       <div class="dchip">الشاغرة<b>${vac}</b></div>
-      <div class="dchip">نسبة الإشغال<b>${pct(a.filled, a.approved)}٪</b></div></div>`;
+      <div class="dchip hot">نسبة الإشغال<b>${pct(a.filled, a.approved)}٪</b></div></div>`;
 
+    const occ = pct(a.filled, a.approved);
     const charts = `<div class="d3">
-      <div class="dbox"><div class="bt ttl-edit">الشواغر</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", vac, "var(--g-400)"]])}</div>
-      <div class="dbox"><div class="bt ttl-edit">المستوى الوظيفي</div>${splitbar([["مبتدئ", a.junior, "var(--emerald)"], ["متقدم", a.senior, "var(--g-800)"]])}</div>
-      <div class="dbox"><div class="bt ttl-edit">الجنس</div>${splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])}</div></div>`;
+      <div class="dbox occ"><div class="bt ttl-edit" data-k="نسبة الإشغال">نسبة الإشغال</div>
+        ${ring(occ, occ >= 90 ? "var(--emerald)" : occ >= 70 ? "var(--g-700)" : "var(--gold)", "إشغال", `${a.filled} مشغولة · ${vac} شاغرة`, 186)}</div>
+      <div class="dbox"><div class="bt ttl-edit" data-k="الشواغر">الشواغر</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", vac, "var(--g-400)"]])}</div>
+      <div class="dbox"><div class="bt ttl-edit" data-k="الجنس">الجنس</div>${splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])}</div></div>`;
 
     let ch = "";
     if (kids.length) {
@@ -1476,8 +1549,6 @@ window.APP_CONFIG = {
         ["parent_id", "التبعية", "select", r.parent_id, `<option value="">— بلا تبعية (قطاع رئيسي)</option>` + unitSelect(r.parent_id), false],
         ["approved", "الوظائف المعتمدة", "number", r.approved, null, false],
         ["filled", "الوظائف المشغولة", "number", r.filled, null, false],
-        ["junior", "عدد المبتدئ", "number", r.junior, null, false],
-        ["senior", "عدد المتقدم", "number", r.senior, null, false],
         ["male", "عدد الذكور", "number", r.male, null, false],
         ["female", "عدد الإناث", "number", r.female, null, false],
       ],
@@ -1637,6 +1708,8 @@ window.APP_CONFIG = {
   /* ---------------- الواجهة العامة ---------------- */
   window.APP = {
     setTab(k) { state.tab = k; render(); },
+    setStage(i) { state.stage = state.stage === i ? null : i; render(); },
+    setStatus(key, v) { state.status[key] = v || null; render(); },
     goNode(id) { state.node = id; render(); },
     setFilter(k, v) { state.filters[k] = k === "unit" ? v : Number(v); state.tab = state.tab; render(); },
     toggleEdit, saveTitles, openForm, saveForm, closeForm, removeRow,

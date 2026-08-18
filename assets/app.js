@@ -15,6 +15,8 @@
     node: "root",
     user: null,
     filters: { unit: "", year: 2026, month: 0 }, // month=0 يعني كل الأشهر
+    stage: null,   // مرحلة التوظيف المختارة من شريط المراحل
+    status: {},    // الحالة المختارة لكل جدول (المتدربون/تمهير)
     edit: false,
   };
 
@@ -148,6 +150,16 @@
     return `<div class="split">${bars}</div><div class="slg">${lg}</div>`;
   }
 
+  /* شريط حالات قابل للضغط — يعرض من هم في كل حالة */
+  function statusChips(key, list, statuses) {
+    const cur = state.status[key] || "";
+    const chip = (val, label, n) =>
+      `<div class="sc${cur === val ? " on" : ""}" onclick="APP.setStatus('${jsq(key)}','${jsq(val)}')">${esc(label)}<b>${n}</b></div>`;
+    return `<div class="statchips">${chip("", "الكل", list.length)}
+      ${statuses.map((st) => chip(st, st, list.filter((r) => r.status === st).length)).join("")}</div>`;
+  }
+  const byStatus = (key, list) => (state.status[key] ? list.filter((r) => r.status === state.status[key]) : list);
+
   /* ---------------- بطاقات الأشخاص ---------------- */
   function pcard(name, pos, metas, badge, act) {
     const m = metas.filter(([k, v]) => v && v !== "—")
@@ -195,7 +207,6 @@
       ["training", "cap", trainees.length, "طلبات التدريب"],
       ["tamheer", "group", tamheer.length, "طلبات تمهير"],
       ["resignations", "exit", resg.length, "الاستقالات"],
-      ["recruitment", "check", pct(done, totalVac) + "%", "نسبة إنجاز التوظيف"],
     ].map(([href, ic, v, l]) => `<a class="tcard" href="#/${href}"><div class="ic">${icon(ic)}</div>
       <div><div class="v">${v}</div><div class="l">${esc(l)}</div></div></a>`).join("");
 
@@ -252,8 +263,14 @@
       { form: "interview", id: r.id, table: "interviews" })).join("");
 
     // المراحل
-    const sum = STAGES.slice(1).map((s, i) => `<div class="sum"><div class="n">${cands.filter((c) => c.stage >= i + 1).length}</div><div class="l">${esc(s)}</div></div>`).join("");
-    const accs = cands.map((c, i) => {
+    const atStage = (i) => cands.filter((c) => Number(c.stage) === i);
+    const sum = STAGES.map((s, i) => `<div class="sum${state.stage === i ? " on" : ""}" onclick="APP.setStage(${i})" title="اعرض من في هذه المرحلة">
+      <div class="n">${atStage(i).length}</div><div class="l">${esc(s)}</div></div>`).join("");
+    const shownCands = state.stage == null ? cands : atStage(state.stage);
+    const stageNote = state.stage == null ? "" :
+      `<div class="stagenote">تعرض الآن مرحلة «${esc(STAGES[state.stage])}» — ${shownCands.length} مرشح
+        <button class="btn btn-x" onclick="APP.setStage(${state.stage})">عرض كل المراحل</button></div>`;
+    const accs = shownCands.map((c, i) => {
       const steps = STAGES.map((s, si) => {
         const cls = si < c.stage ? "done" : si === c.stage ? "cur" : "";
         return `<div class="step ${cls}"><div class="c">${si < c.stage ? "✓" : si + 1}</div><div class="t">${esc(s)}</div></div>`;
@@ -272,7 +289,8 @@
       ["الدرجة", r.grade], ["تاريخ المباشرة", r.start_date], ["الملاحظات", r.notes],
     ], null, { form: "onboarding", id: r.id, table: "onboarding" })).join("");
 
-    const flow = addCand + `<div class="sumrow">${sum}</div>` + (accs || '<div class="empty">لا يوجد مرشحون</div>') +
+    const flow = addCand + `<div class="sumrow">${sum}</div>` + stageNote +
+      (accs || '<div class="empty">لا يوجد مرشحون في هذه المرحلة</div>') +
       `<div style="margin-top:22px"></div>` + plist("مرحلة الانضمام", rows("onboarding").length + " منضم", onbCards, ["إضافة منضم", "onboarding"]);
 
     const views = [
@@ -303,7 +321,8 @@
       <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع المتدربين على القطاعات">توزيع المتدربين على القطاعات</h3><span class="hint">الإجمالي ${tr.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
-    const cards = tr.map((r) => pcard(r.name, r.university, [
+    const trShown = byStatus("trainees", tr);
+    const cards = statusChips("trainees", tr, ["قائم", "تحت الإجراء", "مكتمل"]) + trShown.map((r) => pcard(r.name, r.university, [
       ["المشرف التدريبي", r.supervisor], ["الإدارة", (unitById(r.unit_id) || {}).name],
       ["بداية التدريب", r.start_date], ["نهاية التدريب", r.end_date], ["رقم الجوال", r.phone],
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
@@ -313,7 +332,7 @@
       <div class="hero">${ring(pct(tr.length, target), "var(--g-700)", "من المستهدف", `${tr.length} من مستهدف ${target}`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tt", "المتدربون"]],
-      [["ov", ov], ["tt", plist("جدول المتدربين", tr.length + " متدرب", cards, ["إضافة متدرب", "trainee"])]], side);
+      [["ov", ov], ["tt", plist("جدول المتدربين", trShown.length + " متدرب", cards, ["إضافة متدرب", "trainee"])]], side);
   }
 
   // طلبات تمهير
@@ -333,7 +352,8 @@
       <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع متدربي تمهير على القطاعات">توزيع متدربي تمهير على القطاعات</h3><span class="hint">الإجمالي ${tm.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
-    const cards = tm.map((r) => pcard(r.name, r.university, [
+    const tmShown = byStatus("tamheer", tm);
+    const cards = statusChips("tamheer", tm, ["قائم", "تحت الإجراء", "مكتمل"]) + tmShown.map((r) => pcard(r.name, r.university, [
       ["المشرف التدريبي", r.supervisor], ["الإدارة", (unitById(r.unit_id) || {}).name],
       ["بداية البرنامج", r.start_date], ["نهاية البرنامج", r.end_date], ["رقم الجوال", r.phone],
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
@@ -343,7 +363,7 @@
       <div class="hero">${ring(pct(tm.length, target), "var(--g-700)", "من المستهدف", `${tm.length} من مستهدف ${target}`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tm", "المتقدمون"]],
-      [["ov", ov], ["tm", plist("جدول طلبات تمهير", tm.length + " طلب", cards, ["إضافة طلب تمهير", "tamheer"])]], side);
+      [["ov", ov], ["tm", plist("جدول طلبات تمهير", tmShown.length + " طلب", cards, ["إضافة طلب تمهير", "tamheer"])]], side);
   }
 
   // الاستقالات
@@ -396,12 +416,14 @@
       <div class="dchip">الوظائف المعتمدة<b>${a.approved}</b></div>
       <div class="dchip">المشغولة<b>${a.filled}</b></div>
       <div class="dchip">الشاغرة<b>${vac}</b></div>
-      <div class="dchip">نسبة الإشغال<b>${pct(a.filled, a.approved)}٪</b></div></div>`;
+      <div class="dchip hot">نسبة الإشغال<b>${pct(a.filled, a.approved)}٪</b></div></div>`;
 
+    const occ = pct(a.filled, a.approved);
     const charts = `<div class="d3">
-      <div class="dbox"><div class="bt ttl-edit">الشواغر</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", vac, "var(--g-400)"]])}</div>
-      <div class="dbox"><div class="bt ttl-edit">المستوى الوظيفي</div>${splitbar([["مبتدئ", a.junior, "var(--emerald)"], ["متقدم", a.senior, "var(--g-800)"]])}</div>
-      <div class="dbox"><div class="bt ttl-edit">الجنس</div>${splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])}</div></div>`;
+      <div class="dbox occ"><div class="bt ttl-edit" data-k="نسبة الإشغال">نسبة الإشغال</div>
+        ${ring(occ, occ >= 90 ? "var(--emerald)" : occ >= 70 ? "var(--g-700)" : "var(--gold)", "إشغال", `${a.filled} مشغولة · ${vac} شاغرة`, 186)}</div>
+      <div class="dbox"><div class="bt ttl-edit" data-k="الشواغر">الشواغر</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", vac, "var(--g-400)"]])}</div>
+      <div class="dbox"><div class="bt ttl-edit" data-k="الجنس">الجنس</div>${splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])}</div></div>`;
 
     let ch = "";
     if (kids.length) {
@@ -586,8 +608,6 @@
         ["parent_id", "التبعية", "select", r.parent_id, `<option value="">— بلا تبعية (قطاع رئيسي)</option>` + unitSelect(r.parent_id), false],
         ["approved", "الوظائف المعتمدة", "number", r.approved, null, false],
         ["filled", "الوظائف المشغولة", "number", r.filled, null, false],
-        ["junior", "عدد المبتدئ", "number", r.junior, null, false],
-        ["senior", "عدد المتقدم", "number", r.senior, null, false],
         ["male", "عدد الذكور", "number", r.male, null, false],
         ["female", "عدد الإناث", "number", r.female, null, false],
       ],
@@ -747,6 +767,8 @@
   /* ---------------- الواجهة العامة ---------------- */
   window.APP = {
     setTab(k) { state.tab = k; render(); },
+    setStage(i) { state.stage = state.stage === i ? null : i; render(); },
+    setStatus(key, v) { state.status[key] = v || null; render(); },
     goNode(id) { state.node = id; render(); },
     setFilter(k, v) { state.filters[k] = k === "unit" ? v : Number(v); state.tab = state.tab; render(); },
     toggleEdit, saveTitles, openForm, saveForm, closeForm, removeRow,

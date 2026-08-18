@@ -139,6 +139,9 @@ h1,h2,h3,h4{font-family:"Noto Kufi Arabic","Noto Sans Arabic",sans-serif}
 .d3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
 .dbox{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;text-align:center}
 .dbox .bt{font-size:13px;font-weight:800;color:var(--g-900);margin-bottom:10px;font-family:"Noto Kufi Arabic"}
+.dbox.occ{background:linear-gradient(160deg,#fff,var(--g-50));border-color:var(--g-400)}
+.dchip.hot{background:var(--g-800);border-color:var(--g-800);color:#fff}
+.dchip.hot b{color:#fff}
 .split{display:flex;height:34px;border-radius:9px;overflow:hidden;border:1px solid var(--line)}
 .split i{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12.5px;font-weight:800;font-family:"Noto Kufi Arabic";font-style:normal}
 .slg{display:flex;justify-content:center;gap:16px;margin-top:10px;font-size:11.5px;color:var(--ink-2);flex-wrap:wrap}
@@ -247,6 +250,20 @@ body.edit .editbar{display:flex}
 .sum{flex:1;min-width:118px;background:var(--g-50);border:1px solid var(--line);border-radius:13px;padding:11px 12px;text-align:center}
 .sum .n{font-family:"Noto Kufi Arabic";font-weight:800;font-size:21px;color:var(--g-800);line-height:1}
 .sum .l{font-size:11px;color:var(--ink-2);margin-top:5px}
+.sum{cursor:pointer;transition:.15s}
+.sum:hover{border-color:var(--g-400)}
+.sum.on{background:var(--g-800);border-color:var(--g-800)}
+.sum.on .n{color:#fff}
+.sum.on .l{color:rgba(255,255,255,.85)}
+.stagenote{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:var(--g-50);
+  border:1px solid var(--line);border-radius:11px;padding:9px 13px;margin-bottom:14px;font-size:12.5px;color:var(--ink-2)}
+.statchips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.sc{display:flex;align-items:center;gap:6px;background:var(--g-50);border:1px solid var(--line);
+  border-radius:20px;padding:6px 13px;font-size:12px;color:var(--ink-2);cursor:pointer;transition:.15s}
+.sc:hover{border-color:var(--g-400)}
+.sc b{font-family:"Noto Kufi Arabic";color:var(--g-800)}
+.sc.on{background:var(--g-800);border-color:var(--g-800);color:#fff}
+.sc.on b{color:#fff}
 .acc{border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden;background:#fff}
 .acc .head{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer}
 .acc .head:hover{background:var(--g-50)}
