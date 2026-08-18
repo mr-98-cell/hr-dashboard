@@ -1820,7 +1820,8 @@ ${editBtn}
     const fh = F.fields(row).map(([k, lbl, type, val, sel, full]) => {
       const inp = sel != null
         ? `<select class="inp" data-k="${esc(k)}">${sel}</select>`
-        : `<input class="inp" data-k="${esc(k)}" type="${esc(type)}" value="${esc(val == null ? "" : val)}" placeholder="اكتب هنا…">`;
+        : `<input class="inp" data-k="${esc(k)}" type="${esc(type)}" value="${esc(val == null ? "" : val)}"
+             ${type === "date" ? 'lang="ar-u-ca-gregory"' : ""} placeholder="${esc(t("اكتب هنا…"))}">`;
       return `<div class="fld2 ${full ? "full" : ""}"><label>${esc(t(lbl))}</label>${inp}</div>`;
     }).join("");
 
