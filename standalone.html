@@ -762,12 +762,13 @@ window.APP_CONFIG = {
       }
       if (!role) throw new Error("رمز الدخول غير صحيح");
       const u = { name: (name || "").trim() || "مستخدم", role: role, demo: true };
-      sessionStorage.setItem("adaa_hr_user", JSON.stringify(u));
+      // بعض المتصفحات تمنع التخزين (تصفح خاص أو إطار مقيّد) — الجلسة تكمل بدونه
+      try { sessionStorage.setItem("adaa_hr_user", JSON.stringify(u)); } catch (e) {}
       return u;
     },
 
     async signOut() {
-      sessionStorage.removeItem("adaa_hr_user");
+      try { sessionStorage.removeItem("adaa_hr_user"); } catch (e) {}
       if (HAS_REMOTE) await client().auth.signOut();
     },
   };
