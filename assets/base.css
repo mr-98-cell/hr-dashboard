@@ -8,15 +8,6 @@
   --rail-a:#00584c;--rail-b:#016b5f;
 }
 
-/* الوضع الداكن — يُفعّل بالسمة data-theme على <html> */
-:root[data-theme="dark"]{
-  --g-900:#d7efe9;--g-800:#8fd8c8;--g-700:#5cc4b1;--g-600:#3aa899;--g-500:#2f8d81;--g-400:#2a7369;
-  --g-100:#1d3b36;--g-50:#16302c;--gold:#f0b93c;--emerald:#28c79b;--amber:#e8a63c;--red:#e06a6a;--green:#33b877;
-  --ink:#e6f2ef;--ink-2:#a9c2bc;--muted:#7d968f;--line:#22403a;--card:#122622;
-  --page:radial-gradient(1200px 600px at 82% -5%,rgba(255,255,255,.05),transparent),linear-gradient(135deg,#07211e,#041613);
-  --board:#0e211e;--panel:#122622;--soft:#16302c;--ringtrack:#1d3b36;--railtxt:rgba(255,255,255,.66);
-  --rail-a:#04231f;--rail-b:#0a3a33;
-}
 *{box-sizing:border-box}html,body{margin:0;padding:0}
 body{font-family:"Noto Sans Arabic","Noto Naskh Arabic",system-ui,sans-serif;direction:rtl;color:var(--ink);
   background:var(--page);min-height:100vh}

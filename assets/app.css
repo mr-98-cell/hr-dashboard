@@ -179,3 +179,14 @@ a.tcard .v{color:var(--g-900)}
   background:var(--panel);border:1px solid #f0cfcf;border-radius:6px;
   padding:1px 6px;font-size:11.5px;direction:ltr;display:inline-block;
 }
+
+
+/* ===== الاتجاه الإنجليزي (LTR) ===== */
+[dir="ltr"] .rail a .tip{right:auto;left:60px}
+[dir="ltr"] .chead .ttl{flex-direction:row-reverse}
+[dir="ltr"] th,[dir="ltr"] td{text-align:left}
+[dir="ltr"] .crumbs .sep{transform:scaleX(-1);display:inline-block}
+[dir="ltr"] h2,[dir="ltr"] h3,[dir="ltr"] .dn,[dir="ltr"] .bt{letter-spacing:.1px}
+[dir="ltr"] .dbox .bt,[dir="ltr"] .p-h h3{text-align:left}
+[dir="ltr"] body{font-family:"Segoe UI",system-ui,-apple-system,sans-serif}
+[dir="ltr"] h1,[dir="ltr"] h2,[dir="ltr"] h3,[dir="ltr"] h4{font-family:"Segoe UI",system-ui,sans-serif}

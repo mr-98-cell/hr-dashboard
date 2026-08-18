@@ -5,6 +5,7 @@
 (function () {
   const CFG = window.APP_CONFIG || {};
   const MONTHS = ["ينا", "فبر", "مار", "أبر", "ماي", "يون", "يول", "أغس", "سبت", "أكت", "نوف", "ديس"];
+  const MONTHS_EN = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   const MONTHS_FULL = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
   const WEEKDAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
   // yyyy-mm-dd → اسم اليوم؛ يتجاهل القيم القديمة المكتوبة نصًا
@@ -29,7 +30,7 @@
     node: "root",
     user: null,
     filters: { unit: "", year: 2026, month: 0 }, // month=0 يعني كل الأشهر
-    theme: "light",
+    lang: "ar",
     stage: null,   // مرحلة التوظيف المختارة من شريط المراحل
     status: {},    // الحالة المختارة لكل جدول (المتدربون/تمهير)
     edit: false,
@@ -58,10 +59,9 @@
     trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',
     check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
-    sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/>',
-    moon: '<path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8z"/>',
     sheet: '<path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M3 9.5h18M3 15h18M9.5 9.5V20M15 9.5V20"/>',
     file: '<path d="M6 2.5h7L18.5 8v13a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z"/><path d="M13 2.5V8h5.5"/><path d="M8.5 13.5h7M8.5 17h4.5"/>',
+    globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>',
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ""}</svg>`;
   const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>';
@@ -122,7 +122,7 @@
   /* توزيع عدّي على وحدات المجموعة */
   function distBy(list, count) {
     return groupUnits().map((g, i) => [
-      g.name,
+      uname(g),
       count ? list.filter((x) => groupOf(x.unit_id) === g.id).reduce((sum, x) => sum + Number(x[count] || 0), 0)
             : list.filter((x) => x.unit_id && groupOf(x.unit_id) === g.id).length,
       PALETTE[i % PALETTE.length],
@@ -165,7 +165,7 @@
     const svg = `<svg viewBox="0 0 188 188" width="${size}" height="${size}">${paths}
       <text x="94" y="88" text-anchor="middle" style="font-size:30px;font-weight:800;font-family:Noto Kufi Arabic;fill:var(--g-800)">${ctop}</text>
       <text x="94" y="110" text-anchor="middle" style="font-size:13px;fill:var(--muted)">${cbot}</text></svg>`;
-    const leg = segs.map(([l, v, c]) => `<div class="it"><span class="sw" style="background:${c}"></span>${esc(l)} <b>(${v})</b></div>`).join("");
+    const leg = segs.map(([l, v, c]) => `<div class="it"><span class="sw" style="background:${c}"></span>${esc(t(l))} <b>(${v})</b></div>`).join("");
     return `<div class="donut-wrap${opts.stack ? " stack" : ""}">${svg}<div class="legend${opts.row ? " row" : ""}">${leg}</div></div>`;
   }
 
@@ -175,7 +175,7 @@
       <circle cx="77" cy="77" r="${R}" fill="none" stroke="var(--ringtrack,var(--g-50))" stroke-width="15"/>
       <circle cx="77" cy="77" r="${R}" fill="none" stroke="${col}" stroke-width="15" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 77 77)"/>
       <text x="77" y="72" text-anchor="middle" style="font-size:32px;font-weight:800;font-family:Noto Kufi Arabic;fill:var(--g-800)">${p}%</text>
-      <text x="77" y="95" text-anchor="middle" style="font-size:12px;fill:var(--muted)">${esc(label)}</text></svg>
+      <text x="77" y="95" text-anchor="middle" style="font-size:12px;fill:var(--muted)">${esc(t(label))}</text></svg>
       ${note ? `<div class="ring-note">${esc(note)}</div>` : ""}</div>`;
   }
 
@@ -184,14 +184,14 @@
     const mx = Math.max(...items.map((i) => i[1]), 1);
     const cols = items.map(([l, v, c]) => `<div class="cb"><div class="cbv">${v}</div>
       <div class="cbcol" style="height:${Math.max(14, (v / mx) * maxh).toFixed(0)}px;background:${c}"></div>
-      <div class="cbl">${esc(l)}</div></div>`).join("");
+      <div class="cbl">${esc(t(l))}</div></div>`).join("");
     return `<div class="cbars">${cols}</div>`;
   }
 
   function splitbar(parts) {
     const tot = parts.reduce((s, p) => s + p[1], 0) || 1;
     const bars = parts.map(([l, v, c]) => `<i style="width:${((v / tot) * 100).toFixed(1)}%;background:${c}">${v}</i>`).join("");
-    const lg = parts.map(([l, v, c]) => `<div class="i"><span class="sw" style="background:${c}"></span>${esc(l)}</div>`).join("");
+    const lg = parts.map(([l, v, c]) => `<div class="i"><span class="sw" style="background:${c}"></span>${esc(t(l))}</div>`).join("");
     return `<div class="split">${bars}</div><div class="slg">${lg}</div>`;
   }
 
@@ -199,7 +199,7 @@
   function statusChips(key, list, statuses) {
     const cur = state.status[key] || "";
     const chip = (val, label, n) =>
-      `<div class="sc${cur === val ? " on" : ""}" onclick="APP.setStatus('${jsq(key)}','${jsq(val)}')">${esc(label)}<b>${n}</b></div>`;
+      `<div class="sc${cur === val ? " on" : ""}" onclick="APP.setStatus('${jsq(key)}','${jsq(val)}')">${esc(t(label))}<b>${n}</b></div>`;
     return `<div class="statchips">${chip("", "الكل", list.length)}
       ${statuses.map((st) => chip(st, st, list.filter((r) => r.status === st).length)).join("")}</div>`;
   }
@@ -208,21 +208,21 @@
   /* ---------------- بطاقات الأشخاص ---------------- */
   function pcard(name, pos, metas, badge, act) {
     const m = metas.filter(([k, v]) => v && v !== "—")
-      .map(([k, v]) => `<div class="mi"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>`).join("");
-    const b = badge ? `<span class="badge ${badge[1]}">${esc(badge[0])}</span>` : "";
+      .map(([k, v]) => `<div class="mi"><span class="k">${esc(t(k))}</span><span class="v">${esc(t(v))}</span></div>`).join("");
+    const b = badge ? `<span class="badge ${badge[1]}">${esc(t(badge[0]))}</span>` : "";
     const acts = act && canEdit()
-      ? `<span class="iact" title="تعديل" onclick="APP.openForm('${jsq(act.form)}','${jsq(act.id)}')">${icon("pen")}</span>
-         <span class="iact del" title="حذف" onclick="APP.removeRow('${jsq(act.table)}','${jsq(act.id)}')">${icon("trash")}</span>` : "";
+      ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="APP.openForm('${jsq(act.form)}','${jsq(act.id)}')">${icon("pen")}</span>
+         <span class="iact del" title="${esc(t("حذف"))}" onclick="APP.removeRow('${jsq(act.table)}','${jsq(act.id)}')">${icon("trash")}</span>` : "";
     return `<div class="prow"><div class="pav">${esc((name || "?").trim()[0])}</div>
       <div class="pid"><div class="pn">${esc(name)}</div><div class="pp">${esc(pos)}</div></div>
       <div class="pmeta">${m}</div><div class="pend hact">${b}${acts}</div></div>`;
   }
 
   function plist(title, chip, cards, add) {
-    const a = add && canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('${add[1]}')">${icon("plus")} ${esc(add[0])}</button>` : "";
-    return `<div class="card"><div class="tbl-h"><h3 class="ttl-edit" data-k="${esc(title)}">${esc(title)}</h3>
+    const a = add && canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('${jsq(add[1])}')">${icon("plus")} ${esc(t(add[0]))}</button>` : "";
+    return `<div class="card"><div class="tbl-h"><h3 class="ttl-edit" data-tk="1" data-k="${esc(title)}">${esc(t(title))}</h3>
       <div class="hact"><span class="chip2">${esc(chip)}</span>${a}</div></div>
-      <div class="plist">${cards || '<div class="empty">لا توجد بيانات مطابقة للفلاتر الحالية</div>'}</div></div>`;
+      <div class="plist">${cards || `<div class="empty">${esc(t("لا توجد بيانات مطابقة للفلاتر الحالية"))}</div>`}</div></div>`;
   }
 
   /* ---------------- الصفحات ---------------- */
@@ -253,7 +253,7 @@
       ["tamheer", "group", tamheer.length, "طلبات تمهير"],
       ["resignations", "exit", resg.length, "الاستقالات"],
     ].map(([href, ic, v, l]) => `<a class="tcard" href="#/${href}"><div class="ic">${icon(ic)}</div>
-      <div><div class="v">${v}</div><div class="l">${esc(l)}</div></div></a>`).join("");
+      <div><div class="v">${v}</div><div class="l">${esc(t(l))}</div></div></a>`).join("");
 
     const panels = [
       ["توزيع حالة طلبات التوظيف", `من إجمالي ${totalVac + inprog + done}`,
@@ -267,7 +267,7 @@
           tamheer.length, "طلب", { size: 240 })],
       ["توزيع الاستقالات حسب القطاع", `الإجمالي ${resg.length}`, colbars(bySector)],
     ].map((p, i, arr) => `<div class="panel"${i === arr.length - 1 && arr.length % 2 === 1 ? ' style="grid-column:1/-1"' : ""}>
-      <div class="p-h"><h3 class="ttl-edit" data-k="${esc(p[0])}">${esc(p[0])}</h3><span class="hint">${esc(p[1])}</span></div>
+      <div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="${esc(p[0])}">${esc(t(p[0]))}</h3><span class="hint">${esc(p[1])}</span></div>
       <div class="body">${p[2]}</div></div>`).join("");
 
     return `<div class="tcards">${cards}</div><div class="mrow full"><div class="vgrid">${panels}</div></div>`;
@@ -291,19 +291,19 @@
 
     // ثلاث دوائر: الإجمالي · قيد الإجراء · المكتملة — كل واحدة تُقارن بالإجمالي
     const ivRing = (label, key, n, col) => `<div class="panel"><div class="p-h">
-        <h3 class="ttl-edit" data-k="${label}">${label}</h3><span class="hint">من ${ivs.length}</span></div>
+        <h3 class="ttl-edit" data-tk="1" data-k="${label}">${label}</h3><span class="hint">من ${ivs.length}</span></div>
       <div class="body">${donut([[label, n, col], ["الباقي", Math.max(ivs.length - n, 0), "var(--g-100)"]], n, key, { size: 176 })}</div></div>`;
     const ov = `<div class="vgrid">
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="عدد طلبات المقابلات">عدد طلبات المقابلات</h3></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="عدد طلبات المقابلات">${esc(t("عدد طلبات المقابلات"))}</h3></div>
         <div class="body">${donut([["مجدولة", ivSch, "var(--amber)"], ["مكتملة", ivDone, "var(--g-800)"], ["مرفوضة", ivRej, "var(--red)"]], ivs.length, "مقابلة", { size: 176 })}</div></div>
       ${ivRing("قيد الإجراء", "مجدولة", ivSch, "var(--amber)")}
       ${ivRing("المكتملة", "مكتملة", ivDone, "var(--g-800)")}
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="الوظائف الشاغرة حسب القطاع">الوظائف الشاغرة حسب القطاع</h3><span class="hint">الإجمالي ${totalVac}</span></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="الوظائف الشاغرة حسب القطاع">${esc(t("الوظائف الشاغرة حسب القطاع"))}</h3><span class="hint">الإجمالي ${totalVac}</span></div>
         <div class="body">${colbars(bySectorVac)}</div></div></div>`;
 
     // المقابلات
     const ivCards = ivs.map((r) => pcard(r.candidate, r.position, [
-      ["الإدارة", (unitById(r.unit_id) || {}).name], ["مالك الوظيفة", r.owner],
+      ["الإدارة", uname(unitById(r.unit_id))], ["مالك الوظيفة", r.owner],
       ["التاريخ", r.date ? fmtDate(r.date) + ((r.day || dayOf(r.date)) ? " · " + (r.day || dayOf(r.date)) : "") : ""], ["الوقت", r.time],
       ["مصدر الوظيفة", r.job_source], ["مصدر المرشح", r.cand_source_name ? r.cand_source + " · " + r.cand_source_name : r.cand_source],
       ["تقييم الموارد البشرية", r.hr_rating], ["تقييم الإدارة", r.mgr_rating],
@@ -313,7 +313,7 @@
     // المراحل
     const atStage = (i) => cands.filter((c) => Number(c.stage) === i);
     const sum = STAGES.map((s, i) => `<div class="sum${state.stage === i ? " on" : ""}" onclick="APP.setStage(${i})" title="اعرض من في هذه المرحلة">
-      <div class="n">${atStage(i).length}</div><div class="l">${esc(s)}</div></div>`).join("");
+      <div class="n">${atStage(i).length}</div><div class="l">${esc(t(s))}</div></div>`).join("");
     const shownCands = state.stage == null ? cands : atStage(state.stage);
     const stageNote = state.stage == null ? "" :
       `<div class="stagenote">تعرض الآن مرحلة «${esc(STAGES[state.stage])}» — ${shownCands.length} مرشح
@@ -321,12 +321,12 @@
     const accs = shownCands.map((c, i) => {
       const steps = STAGES.map((s, si) => {
         const cls = si < c.stage ? "done" : si === c.stage ? "cur" : "";
-        return `<div class="step ${cls}"><div class="c">${si < c.stage ? "✓" : si + 1}</div><div class="t">${esc(s)}</div></div>`;
+        return `<div class="step ${cls}"><div class="c">${si < c.stage ? "✓" : si + 1}</div><div class="t">${esc(t(s))}</div></div>`;
       }).join("");
       const upd = canEdit() ? `<button class="btn btn-g" onclick="APP.openForm('candidate','${jsq(c.id)}')">${icon("pen")} تحديث المرحلة</button>` : "";
       return `<div class="acc ${i === 0 ? "open" : ""}"><div class="head" onclick="this.parentElement.classList.toggle('open')">
         <span class="nm">${esc(c.name)}</span><span class="pos">${esc(c.position)}</span>
-        <span class="badge b-info">${esc(STAGES[c.stage] || "")}</span><span class="chev">${CHEV}</span></div>
+        <span class="badge b-info">${esc(t(STAGES[c.stage] || ""))}</span><span class="chev">${CHEV}</span></div>
         <div class="body"><div class="stepper">${steps}</div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
         <div class="note" style="margin:0">آخر تحديث: ${esc(c.note || "—")}</div>${upd}</div></div></div>`;
@@ -346,7 +346,7 @@
       ["iv", plist("جدول المقابلات", ivs.length + " مقابلة", ivCards, ["إضافة مقابلة", "interview"])],
       ["flow", flow],
     ];
-    const side = `<div class="s-h"><h3 class="ttl-edit" data-k="نسبة إنجاز التوظيف">نسبة إنجاز التوظيف</h3></div>
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة إنجاز التوظيف">${esc(t("نسبة إنجاز التوظيف"))}</h3></div>
       <div class="hero">${ring(rate, "var(--g-700)", "إنجاز التوظيف", `${done} مكتمل من ${totalVac} شاغرة`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["iv", "المقابلات"], ["flow", "مراحل التوظيف"]], views, side);
@@ -362,21 +362,21 @@
     const dist = distBy(tr);
 
     const ov = `<div class="vgrid">
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="حالة طلبات التدريب">حالة طلبات التدريب</h3><span class="hint">من إجمالي ${tr.length}</span></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="حالة طلبات التدريب">${esc(t("حالة طلبات التدريب"))}</h3><span class="hint">من إجمالي ${tr.length}</span></div>
         <div class="body">${donut([["مكتملة", done, "var(--emerald)"], ["تحت الإجراء", prog, "var(--g-600)"], ["قائم", on, "var(--g-400)"]], tr.length, "طلب", { size: 190 })}</div></div>
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="نسبة الإنجاز من الطلبات">نسبة الإنجاز من الطلبات</h3></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة الإنجاز من الطلبات">${esc(t("نسبة الإنجاز من الطلبات"))}</h3></div>
         <div class="body">${ring(pct(done, tr.length), "var(--emerald)", "من الطلبات", `${done} مكتمل من ${tr.length}`, 200)}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع المتدربين على القطاعات">توزيع المتدربين على القطاعات</h3><span class="hint">الإجمالي ${tr.length}</span></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="توزيع المتدربين على القطاعات">${esc(t("توزيع المتدربين على القطاعات"))}</h3><span class="hint">الإجمالي ${tr.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
     const trShown = byStatus("trainees", tr);
     const cards = statusChips("trainees", tr, ["قائم", "تحت الإجراء", "مكتمل"]) + trShown.map((r) => pcard(r.name, r.university, [
-      ["المشرف التدريبي", r.supervisor], ["الإدارة", (unitById(r.unit_id) || {}).name],
+      ["المشرف التدريبي", r.supervisor], ["الإدارة", uname(unitById(r.unit_id))],
       ["بداية التدريب", r.start_date], ["نهاية التدريب", r.end_date], ["رقم الجوال", r.phone],
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
       { form: "trainee", id: r.id, table: "trainees" })).join("");
 
-    const side = `<div class="s-h"><h3 class="ttl-edit" data-k="المحقق من المستهدف">المحقق من المستهدف</h3></div>
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="المحقق من المستهدف">${esc(t("المحقق من المستهدف"))}</h3></div>
       <div class="hero">${ring(pct(tr.length, target), "var(--g-700)", "من المستهدف", `${tr.length} من مستهدف ${target}`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tt", "المتدربون"]],
@@ -393,21 +393,21 @@
     const dist = distBy(tm);
 
     const ov = `<div class="vgrid">
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="حالة طلبات تمهير">حالة طلبات تمهير</h3><span class="hint">من إجمالي ${tm.length}</span></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="حالة طلبات تمهير">${esc(t("حالة طلبات تمهير"))}</h3><span class="hint">من إجمالي ${tm.length}</span></div>
         <div class="body">${donut([["مكتملة", done, "var(--emerald)"], ["تحت الإجراء", prog, "var(--g-600)"], ["قائم", on, "var(--g-400)"]], tm.length, "طلب", { size: 190 })}</div></div>
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-k="نسبة الإنجاز من طلبات تمهير">نسبة الإنجاز من الطلبات</h3></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة الإنجاز من طلبات تمهير">نسبة الإنجاز من الطلبات</h3></div>
         <div class="body">${ring(pct(done, tm.length), "var(--emerald)", "من الطلبات", `${done} مكتمل من ${tm.length}`, 200)}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع متدربي تمهير على القطاعات">توزيع متدربي تمهير على القطاعات</h3><span class="hint">الإجمالي ${tm.length}</span></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="توزيع متدربي تمهير على القطاعات">${esc(t("توزيع متدربي تمهير على القطاعات"))}</h3><span class="hint">الإجمالي ${tm.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
     const tmShown = byStatus("tamheer", tm);
     const cards = statusChips("tamheer", tm, ["قائم", "تحت الإجراء", "مكتمل"]) + tmShown.map((r) => pcard(r.name, r.university, [
-      ["المشرف التدريبي", r.supervisor], ["الإدارة", (unitById(r.unit_id) || {}).name],
+      ["المشرف التدريبي", r.supervisor], ["الإدارة", uname(unitById(r.unit_id))],
       ["بداية البرنامج", r.start_date], ["نهاية البرنامج", r.end_date], ["رقم الجوال", r.phone],
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
       { form: "tamheer", id: r.id, table: "tamheer" })).join("");
 
-    const side = `<div class="s-h"><h3 class="ttl-edit" data-k="المحقق من مستهدف تمهير">المحقق من المستهدف</h3></div>
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="المحقق من مستهدف تمهير">المحقق من المستهدف</h3></div>
       <div class="hero">${ring(pct(tm.length, target), "var(--g-700)", "من المستهدف", `${tm.length} من مستهدف ${target}`, 290)}</div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tm", "المتقدمون"]],
@@ -425,16 +425,16 @@
     const top = dist.slice().sort((a, b) => b[1] - a[1])[0] || ["—", 0];
 
     const ov = `<div class="vgrid">
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="حسب الدرجة">حسب الدرجة</h3></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="حسب الدرجة">${esc(t("حسب الدرجة"))}</h3></div>
         <div class="body">${gsegs.length ? donut(gsegs, rs.length, "استقالة", { size: 190 }) : '<div class="empty">لا توجد بيانات</div>'}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-k="توزيع الاستقالات حسب القطاع">توزيع الاستقالات حسب القطاع</h3><span class="hint">الإجمالي ${rs.length}</span></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="توزيع الاستقالات حسب القطاع">${esc(t("توزيع الاستقالات حسب القطاع"))}</h3><span class="hint">الإجمالي ${rs.length}</span></div>
         <div class="body">${colbars(dist)}</div></div></div>`;
 
     const cards = rs.map((r) => pcard(r.name, r.position, [
-      ["الدرجة", r.grade], ["الإدارة", (unitById(r.unit_id) || {}).name], ["آخر يوم عمل", r.last_day], ["السبب", r.reason],
+      ["الدرجة", r.grade], ["الإدارة", uname(unitById(r.unit_id))], ["آخر يوم عمل", r.last_day], ["السبب", r.reason],
     ], null, { form: "resignation", id: r.id, table: "resignations" })).join("");
 
-    const side = `<div class="s-h"><h3 class="ttl-edit" data-k="عدد الاستقالات">عدد الاستقالات</h3></div>
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="عدد الاستقالات">${esc(t("عدد الاستقالات"))}</h3></div>
       <div class="hero"><div class="hero-circle"><span class="hero-n">${rs.length}</span><span class="hero-l">استقالة حتى اليوم</span></div>
       <div class="hero-facts"><div class="hf"><span>استقالات الشهر الحالي</span><b>${thisMonth}</b></div>
       <div class="hf"><span>أعلى قطاع</span><b>${esc(top[0])} · ${top[1]}</b></div></div></div>`;
@@ -449,29 +449,29 @@
     const isRoot = nid === "root";
     const a = isRoot ? aggregateAll() : aggregate(nid);
     const kids = isRoot ? roots() : childrenOf(nid);
-    const name = isRoot ? "الجهة كاملة" : (unitById(nid) || {}).name || "";
+    const name = isRoot ? t("الجهة كاملة") : uname(unitById(nid));
     const vac = a.approved - a.filled;
 
     const path = isRoot ? [] : pathOf(nid);
     const crumbs = `<div class="crumbs">
       ${isRoot ? '<span class="cur">الجهة كاملة</span>' : `<a onclick="APP.goNode('root')">الجهة كاملة</a><span class="sep">›</span>`}
       ${path.map((x, i) => (i === path.length - 1
-        ? `<span class="cur">${esc((unitById(x) || {}).name)}</span>`
-        : `<a onclick="APP.goNode('${jsq(x)}')">${esc((unitById(x) || {}).name)}</a><span class="sep">›</span>`)).join("")}
+        ? `<span class="cur">${esc(uname(unitById(x)))}</span>`
+        : `<a onclick="APP.goNode('${jsq(x)}')">${esc(uname(unitById(x)))}</a><span class="sep">›</span>`)).join("")}
     </div>`;
 
     const chips = `<div class="dchips">
-      <div class="dchip">الوظائف المعتمدة<b>${a.approved}</b></div>
-      <div class="dchip">المشغولة<b>${a.filled}</b></div>
-      <div class="dchip">الشاغرة<b>${vac}</b></div>
-      <div class="dchip hot">نسبة الإشغال<b>${pct(a.filled, a.approved)}٪</b></div></div>`;
+      <div class="dchip">${esc(t("الوظائف المعتمدة"))}<b>${a.approved}</b></div>
+      <div class="dchip">${esc(t("المشغولة"))}<b>${a.filled}</b></div>
+      <div class="dchip">${esc(t("الشاغرة"))}<b>${vac}</b></div>
+      <div class="dchip hot">${esc(t("نسبة الإشغال"))}<b>${pct(a.filled, a.approved)}٪</b></div></div>`;
 
     const occ = pct(a.filled, a.approved);
     const charts = `<div class="d3">
-      <div class="dbox occ"><div class="bt ttl-edit" data-k="نسبة الإشغال">نسبة الإشغال</div>
+      <div class="dbox occ"><div class="bt ttl-edit" data-k="نسبة الإشغال">${esc(t("نسبة الإشغال"))}</div>
         ${ring(occ, occ >= 90 ? "var(--emerald)" : occ >= 70 ? "var(--g-700)" : "var(--gold)", "إشغال", `${a.filled} مشغولة · ${vac} شاغرة`, 186)}</div>
-      <div class="dbox"><div class="bt ttl-edit" data-k="الشواغر">الشواغر</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", vac, "var(--g-400)"]])}</div>
-      <div class="dbox"><div class="bt ttl-edit" data-k="الجنس">الجنس</div>${splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])}</div></div>`;
+      <div class="dbox"><div class="bt ttl-edit" data-k="الشواغر">${esc(t("الشواغر"))}</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", vac, "var(--g-400)"]])}</div>
+      <div class="dbox"><div class="bt ttl-edit" data-k="الجنس">${esc(t("الجنس"))}</div>${splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])}</div></div>`;
 
     let ch = "";
     if (kids.length) {
@@ -481,7 +481,7 @@
         const editIc = canEdit() ? `<span class="iact" title="تعديل" onclick="event.stopPropagation();APP.openForm('unit','${jsq(k.id)}')">${icon("pen")}</span>` : "";
         return `<div class="dcard" onclick="APP.goNode('${jsq(k.id)}')">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div class="dn">${esc(k.name)}</div>${editIc}</div>
+          <div class="dn">${esc(uname(k))}</div>${editIc}</div>
           <div class="dm"><span class="b">${s.filled}</span><span class="s">من ${s.approved} وظيفة معتمدة</span></div>
           <div class="dbar"><span style="width:${pct(s.filled, s.approved)}%"></span></div>
           <div class="dpct">إشغال ${pct(s.filled, s.approved)}٪ · شاغر ${s.approved - s.filled}${sub ? ` · ${sub} وحدات ↙` : ""}</div></div>`;
@@ -489,13 +489,13 @@
       const addBtn = canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('unit')">${icon("plus")} إضافة إدارة / قسم</button>` : "";
       ch = `<div style="margin-top:18px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
-        <div class="bt ttl-edit" style="font-size:13.5px;color:var(--g-900);margin:0">الإدارات / الأقسام التابعة</div>${addBtn}</div>
+        <div class="bt ttl-edit" style="font-size:13.5px;color:var(--g-900);margin:0">${esc(t("الإدارات / الأقسام التابعة"))}</div>${addBtn}</div>
         <div class="dgrid" style="margin-bottom:0">${cardsHtml}</div></div>`;
     }
 
     const sub = kids.length
-      ? `<div class="dsub">يضم ${kids.length} إدارة/قسم · الإحصائيات مجمّعة على الكل</div>`
-      : '<div class="dsub">وحدة تنظيمية نهائية</div>';
+      ? `<div class="dsub">${state.lang === "en" ? `${kids.length} sub-units · statistics aggregated` : `يضم ${kids.length} إدارة/قسم · الإحصائيات مجمّعة على الكل`}</div>`
+      : `<div class="dsub">${esc(t("وحدة تنظيمية نهائية"))}</div>`;
 
     return `<div class="mrow full"><div class="vhost"><div class="view show">
       ${crumbs}<div class="dhead"><h3>${esc(name)}</h3>${chips}</div>${sub}${charts}${ch}</div></div></div>`;
@@ -504,9 +504,9 @@
   /* ---------------- غلاف التبويبات ---------------- */
   function tabbed(tabs, views, side) {
     const active = state.tab || tabs[0][0];
-    const t = tabs.map(([k, l]) => `<div class="ptab ${k === active ? "on" : ""}" onclick="APP.setTab('${k}')">${esc(l)}</div>`).join("");
+    const tb = tabs.map(([k, l]) => `<div class="ptab ${k === active ? "on" : ""}" onclick="APP.setTab('${jsq(k)}')">${esc(t(l))}</div>`).join("");
     const v = views.map(([k, html]) => `<div class="view ${k === active ? "show" : ""}" id="v-${k}">${html}</div>`).join("");
-    return `<div class="ptabs">${t}</div>
+    return `<div class="ptabs">${tb}</div>
       <div class="mrow${side ? "" : " full"}"><div class="vhost">${v}</div>
       ${side ? `<div class="panel side-panel">${side}</div>` : ""}</div>`;
   }
@@ -561,7 +561,7 @@
   }
 
   function filterLabel() {
-    const u = state.filters.unit ? (unitById(state.filters.unit) || {}).name : "كل الإدارات";
+    const u = state.filters.unit ? uname(unitById(state.filters.unit)) : t("الكل");
     const m = state.filters.month ? MONTHS_FULL[state.filters.month - 1] : "كل الأشهر";
     return `${u} · ${m} ${state.filters.year}`;
   }
@@ -640,17 +640,17 @@
   function shell(title, body) {
     const nav = [["index", "الرئيسية", "home"], ["recruitment", "التوظيف", "users"], ["training", "التدريب", "cap"],
     ["tamheer", "طلبات تمهير", "group"], ["resignations", "الاستقالات", "exit"], ["sectors", "القطاعات", "office"]];
-    const rail = nav.map(([p, t, ic]) => `<a href="#/${p === "index" ? "" : p}" class="${state.page === p ? "on" : ""}"><span class="tip">${t}</span>${icon(ic)}</a>`).join("");
+    const rail = nav.map(([p, tt, ic]) => `<a href="#/${p === "index" ? "" : p}" class="${state.page === p ? "on" : ""}"><span class="tip">${esc(t(tt))}</span>${icon(ic)}</a>`).join("");
 
-    const unitOpts = `<option value="">الكل</option>` + units().map((u) =>
-      `<option value="${esc(u.id)}" ${state.filters.unit === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + u.name)}</option>`).join("");
+    const unitOpts = `<option value="">${esc(t("الكل"))}</option>` + units().map((u) =>
+      `<option value="${esc(u.id)}" ${state.filters.unit === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + uname(u))}</option>`).join("");
     const yearOpts = (CFG.YEARS || [2026]).map((y) => `<option value="${y}" ${Number(state.filters.year) === y ? "selected" : ""}>${y}</option>`).join("");
-    const monthOpts = `<option value="0">كل الأشهر</option>` + MONTHS_FULL.map((m, i) =>
-      `<option value="${i + 1}" ${Number(state.filters.month) === i + 1 ? "selected" : ""}>${m}</option>`).join("");
+    const monthOpts = `<option value="0">${esc(t("كل الأشهر"))}</option>` + MONTHS_FULL.map((m, i) =>
+      `<option value="${i + 1}" ${Number(state.filters.month) === i + 1 ? "selected" : ""}>${esc(state.lang === "en" ? MONTHS_EN[i] : m)}</option>`).join("");
 
-    const editBtn = canEditTitles() ? `<button class="btn btn-g" onclick="APP.toggleEdit()">${icon("pen")} تعديل العناوين</button>` : "";
+    const editBtn = canEditTitles() ? `<button class="btn btn-g" onclick="APP.toggleEdit()">${icon("pen")} ${esc(t("تعديل العناوين"))}</button>` : "";
     const today = new Date();
-    const dateTxt = `${today.getDate()} ${MONTHS_FULL[today.getMonth()]} ${today.getFullYear()}`;
+    const dateTxt = `${today.getDate()} ${state.lang === "en" ? MONTHS_EN[today.getMonth()] : MONTHS_FULL[today.getMonth()]} ${today.getFullYear()}`;
 
     return `<div class="shell"><div class="board">
       <div class="rail">${rail}</div>
@@ -659,28 +659,28 @@
           <div class="ttl"><img class="hlogo" src="assets/adaa-logo.png" alt="أداء"><div class="div"></div>
             <div><h1>${esc(title)}</h1><div class="crumb">${esc(CFG.ORG_NAME || "")}</div></div></div>
           <div class="who"><div class="meta"><div class="nm">${esc(state.user.name)}</div>
-            <div class="rl">${ROLE_LABEL[state.user.role] || ""}</div></div>
+            <div class="rl">${esc(t(ROLE_LABEL[state.user.role] || ""))}</div></div>
             <div class="av">${esc((state.user.name || "?").trim()[0])}</div>
-            <button class="iact logout" title="تسجيل الخروج" onclick="APP.logout()">${icon("logout")}</button></div>
+            <button class="iact logout" title="${esc(t("تسجيل الخروج"))}" onclick="APP.logout()">${icon("logout")}</button></div>
         </div>
         <div class="toolbar">
-          <label class="tb sel-wrap"><span class="k">القطاع / الإدارة</span>
+          <label class="tb sel-wrap"><span class="k">${esc(t("القطاع / الإدارة"))}</span>
             <select onchange="APP.setFilter('unit',this.value)">${unitOpts}</select>${CHEV}</label>
-          <label class="tb sel-wrap"><span class="k">السنة</span>
+          <label class="tb sel-wrap"><span class="k">${esc(t("السنة"))}</span>
             <select onchange="APP.setFilter('year',this.value)">${yearOpts}</select>${CHEV}</label>
-          <label class="tb sel-wrap"><span class="k">الشهر</span>
+          <label class="tb sel-wrap"><span class="k">${esc(t("الشهر"))}</span>
             <select onchange="APP.setFilter('month',this.value)">${monthOpts}</select>${CHEV}</label>
           <div class="sp"></div>
+          <button class="btn btn-g" onclick="APP.toggleLang()" title="Arabic / English">${icon("globe")} ${state.lang === "en" ? "عربي" : "EN"}</button>
           <button class="btn btn-g" onclick="APP.exportExcel()" title="تصدير كل الجداول إلى Excel">${icon("sheet")} Excel</button>
           <button class="btn btn-g" onclick="APP.exportPDF()" title="تصدير التقرير PDF — صفحة لكل جدول">${icon("file")} PDF</button>
-          <button class="btn btn-g" onclick="APP.toggleTheme()" title="تبديل الوضع الداكن / الفاتح">
-            ${icon(state.theme === "dark" ? "sun" : "moon")} ${state.theme === "dark" ? "فاتح" : "داكن"}</button>${editBtn}
+${editBtn}
           <div class="tb">📅 <b>${dateTxt}</b></div>
         </div>
         ${body}
       </div></div>
       ${secWarn()}
-      <div class="foot">${DB.isRemote ? "متصل بقاعدة البيانات" : "وضع تجريبي محلي — البيانات محفوظة في هذا المتصفح"}</div>
+      <div class="foot">${esc(t(DB.isRemote ? "متصل بقاعدة البيانات" : "وضع تجريبي محلي — البيانات محفوظة في هذا المتصفح"))}</div>
       <div class="editbar"><span>وضع تعديل العناوين مُفعّل — اضغط على أي عنوان وعدّله</span>
         <button class="btn btn-p" onclick="APP.saveTitles()">حفظ التعديلات</button>
         <button class="btn btn-x" onclick="APP.toggleEdit()">إلغاء</button></div>
@@ -689,7 +689,7 @@
   }
 
   /* ---------------- النماذج ---------------- */
-  const unitSelect = (val) => units().map((u) => `<option value="${esc(u.id)}" ${val === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + u.name)}</option>`).join("");
+  const unitSelect = (val) => units().map((u) => `<option value="${esc(u.id)}" ${val === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + uname(u))}</option>`).join("");
   const opts = (arr, val) => arr.map((o) => `<option value="${esc(o)}" ${String(val) === String(o) ? "selected" : ""}>${esc(o)}</option>`).join("");
 
   const FORMS = {
@@ -790,7 +790,7 @@
       const inp = sel != null
         ? `<select class="inp" data-k="${esc(k)}">${sel}</select>`
         : `<input class="inp" data-k="${esc(k)}" type="${esc(type)}" value="${esc(val == null ? "" : val)}" placeholder="اكتب هنا…">`;
-      return `<div class="fld2 ${full ? "full" : ""}"><label>${esc(lbl)}</label>${inp}</div>`;
+      return `<div class="fld2 ${full ? "full" : ""}"><label>${esc(t(lbl))}</label>${inp}</div>`;
     }).join("");
 
     const period = F.noPeriod ? "" : `
@@ -802,7 +802,7 @@
       </select></div>`;
 
     $("#formSheet").innerHTML = `
-      <div class="sheet-h"><h3>${id ? "تعديل" : "إضافة"} — ${esc(F.title)}</h3>
+      <div class="sheet-h"><h3>${esc(t(id ? "تعديل" : "إضافة"))} — ${esc(t(F.title))}</h3>
         <button class="xbtn" onclick="APP.closeForm()">✕</button></div>
       <div class="sheet-b"><div class="frm">${fh}${period}</div></div>
       <div class="sheet-f"><button class="btn btn-p" onclick="APP.saveForm('${jsq(kind)}','${jsq(id || "")}')">${icon("check")} حفظ</button>
@@ -870,6 +870,7 @@
     toggleEdit();
   }
   function applyTitles() {
+    if (state.lang !== "ar") return;   // مفاتيح العناوين المحفوظة عربية
     let map = {};
     try { map = JSON.parse(((db().settings || []).find((s) => s.key === "titles") || {}).value || "{}"); } catch (e) {}
     document.querySelectorAll(".ttl-edit").forEach((el) => {
@@ -878,17 +879,84 @@
     });
   }
 
-  /* ---------------- الوضع الداكن / الفاتح ---------------- */
-  function applyTheme(mode) {
-    state.theme = mode === "dark" ? "dark" : "light";
-    document.documentElement.setAttribute("data-theme", state.theme);
-    try { localStorage.setItem("adaa_hr_theme", state.theme); } catch (e) {}
+  /* ---------------- اللغة: عربي / English ---------------- */
+  const STR = {
+    // التنقل والصفحات
+    "الرئيسية": "Home", "التوظيف": "Recruitment", "التدريب": "Training",
+    "طلبات تمهير": "Tamheer Requests", "الاستقالات": "Resignations", "القطاعات": "Departments",
+    "اللوحة الرئيسية": "Dashboard",
+    // شريط الأدوات
+    "القطاع / الإدارة": "Department", "السنة": "Year", "الشهر": "Month",
+    "الكل": "All", "كل الأشهر": "All months", "تعديل العناوين": "Edit titles",
+    // الصلاحيات
+    "مالك الداشبورد": "Dashboard owner", "مُدخِل بيانات": "Data entry", "عرض فقط": "View only",
+    "تسجيل الخروج": "Sign out",
+    // بطاقات ولوحات
+    "طلبات التوظيف المستلمة": "Applications received", "طلبات التدريب": "Training requests",
+    "توزيع حالة طلبات التوظيف": "Recruitment requests by status",
+    "توزيع حالة طلبات التدريب": "Training requests by status",
+    "توزيع حالة طلبات تمهير": "Tamheer requests by status",
+    "توزيع الاستقالات حسب القطاع": "Resignations by department",
+    "عدد طلبات المقابلات": "Interview requests", "قيد الإجراء": "In progress", "المكتملة": "Completed",
+    "الوظائف الشاغرة حسب القطاع": "Vacancies by department",
+    "نظرة عامة": "Overview", "المقابلات": "Interviews", "مراحل التوظيف": "Recruitment stages",
+    "المتدربون": "Trainees", "المتقدمون": "Applicants", "تفاصيل الاستقالات": "Resignation details",
+    "حالة طلبات التدريب": "Training requests status", "حالة طلبات تمهير": "Tamheer requests status",
+    "نسبة الإنجاز من الطلبات": "Completion rate", "المحقق من المستهدف": "Achieved vs target",
+    "توزيع المتدربين على القطاعات": "Trainees by department",
+    "توزيع متدربي تمهير على القطاعات": "Tamheer trainees by department",
+    "حسب الدرجة": "By grade", "عدد الاستقالات": "Resignations count",
+    "نسبة الإشغال": "Occupancy rate", "الشواغر": "Positions", "الجنس": "Gender",
+    // جداول وأزرار
+    "جدول المقابلات": "Interviews table", "مرحلة الانضمام": "Onboarding",
+    "جدول المتدربين": "Trainees table", "جدول طلبات تمهير": "Tamheer requests table",
+    "جدول الاستقالات": "Resignations table",
+    "إضافة مقابلة": "Add interview", "إضافة مرشح": "Add candidate", "إضافة منضم": "Add onboarding",
+    "إضافة متدرب": "Add trainee", "إضافة طلب تمهير": "Add Tamheer request",
+    "تسجيل استقالة": "Record resignation", "إضافة إدارة / قسم": "Add unit",
+    "تحديث المرحلة": "Update stage", "حفظ": "Save", "إلغاء": "Cancel",
+    "تعديل": "Edit", "حذف": "Delete",
+    // الهيكل
+    "الجهة كاملة": "Entire organization", "الوظائف المعتمدة": "Approved positions",
+    "المشغولة": "Filled", "الشاغرة": "Vacant", "مشغولة": "Filled", "شاغرة": "Vacant",
+    "ذكور": "Male", "إناث": "Female", "الإدارات / الأقسام التابعة": "Sub-units",
+    "وحدة تنظيمية نهائية": "Leaf unit", "إشغال": "occupancy",
+    // الحالات والمراحل
+    "مجدولة": "Scheduled", "تمت": "Completed", "مرفوضة": "Rejected",
+    "قائم": "Active", "تحت الإجراء": "In progress", "مكتمل": "Completed", "مكتملة": "Completed",
+    "المقابلة": "Interview", "العرض الأولي": "Initial offer", "المسح الأمني": "Security screening",
+    "الفحص الطبي": "Medical exam", "العرض النهائي": "Final offer", "الانضمام": "Onboarding",
+    // رسائل
+    "لا توجد بيانات مطابقة للفلاتر الحالية": "No records match the current filters",
+    "لا يوجد مرشحون في هذه المرحلة": "No candidates at this stage",
+    "لا توجد بيانات": "No data", "الباقي": "Remaining", "الإجمالي": "Total", "إجمالي": "Total",
+    "من إجمالي": "of", "من": "of", "طلب": "requests", "مقابلة": "interviews",
+    "متدرب": "trainees", "استقالة": "resignations", "منضم": "onboarding",
+    "عرض كل المراحل": "Show all stages", "اعرض من في هذه المرحلة": "Show candidates at this stage",
+    "وضع تجريبي محلي — البيانات محفوظة في هذا المتصفح": "Local demo mode — data stored in this browser",
+    "متصل بقاعدة البيانات": "Connected to the database",
+  };
+  // t() يترجم عند اختيار الإنجليزية، ويعيد النص كما هو إن لم توجد ترجمة
+  function t(x) {
+    if (state.lang !== "en") return x;
+    return Object.prototype.hasOwnProperty.call(STR, x) ? STR[x] : x;
   }
-  function initTheme() {
+  // اسم الوحدة بلغة العرض
+  function uname(u) {
+    if (!u) return "";
+    return state.lang === "en" ? (u.name_en || u.name) : u.name;
+  }
+  function applyLang(lang) {
+    state.lang = lang === "en" ? "en" : "ar";
+    const en = state.lang === "en";
+    document.documentElement.setAttribute("lang", en ? "en" : "ar");
+    document.documentElement.setAttribute("dir", en ? "ltr" : "rtl");
+    try { localStorage.setItem("adaa_hr_lang", state.lang); } catch (e) {}
+  }
+  function initLang() {
     let saved = null;
-    try { saved = localStorage.getItem("adaa_hr_theme"); } catch (e) {}
-    if (!saved && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) saved = "dark";
-    applyTheme(saved || "light");
+    try { saved = localStorage.getItem("adaa_hr_lang"); } catch (e) {}
+    applyLang(saved || "ar");
   }
 
   /* ---------------- التوجيه والعرض ---------------- */
@@ -908,8 +976,8 @@
 
   function render() {
     const P = PAGES[state.page];
-    document.getElementById("app").innerHTML = shell(P.title, P.render());
-    document.title = P.title + " · أداء";
+    document.getElementById("app").innerHTML = shell(t(P.title), P.render());
+    document.title = t(P.title) + " · " + (state.lang === "en" ? "Adaa" : "أداء");
     applyTitles();
     if (state.edit) { state.edit = false; toggleEdit(); }
   }
@@ -950,8 +1018,8 @@
   window.APP = {
     setTab(k) { state.tab = k; render(); },
     setStage(i) { state.stage = state.stage === i ? null : i; render(); },
-    toggleTheme() { applyTheme(state.theme === "dark" ? "light" : "dark"); render(); },
     exportExcel, exportPDF,
+    toggleLang() { applyLang(state.lang === "en" ? "ar" : "en"); render(); },
     setStatus(key, v) { state.status[key] = v || null; render(); },
     goNode(id) { state.node = id; state.filters.unit = id === "root" ? "" : id; render(); },
     setFilter(k, v) {
@@ -993,7 +1061,7 @@
   window.addEventListener("hashchange", () => { if (state.user) { state.tab = null; readHash(); render(); } });
 
   (async function init() {
-    initTheme();
+    initLang();
     state.user = await AUTH.current();
     if (state.user) await boot();
     else loginScreen();
