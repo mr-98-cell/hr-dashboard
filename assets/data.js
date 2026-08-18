@@ -103,11 +103,11 @@
     ],
 
     interviews: [
-      { id: "i1", candidate: "سارة الدوسري", position: "أخصائي تحليل بيانات", unit_id: "perf", owner: "أ. خالد العمري", status: "مجدولة", date: "٢٨ يوليو", day: "الثلاثاء", time: "١٠:٠٠ ص", job_source: "توظيف مباشر", cand_source: "لينكدإن", cand_source_name: "", hr_rating: "ممتاز", mgr_rating: "جيد جدًا", year: 2026, month: 7 },
-      { id: "i2", candidate: "فيصل القحطاني", position: "مستشار قانوني", unit_id: "legal", owner: "أ. منى الحربي", status: "تمت", date: "٢٦ يوليو", day: "الأحد", time: "١٢:٣٠ م", job_source: "إعلان داخلي", cand_source: "توصية", cand_source_name: "أ. سعد", hr_rating: "جيد جدًا", mgr_rating: "ممتاز", year: 2026, month: 7 },
-      { id: "i3", candidate: "عبدالله الزهراني", position: "أخصائي مشتريات", unit_id: "shared", owner: "أ. نورة السالم", status: "مرفوضة", date: "٢٤ يوليو", day: "الخميس", time: "٩:٠٠ ص", job_source: "منصة توظيف", cand_source: "جدارات", cand_source_name: "", hr_rating: "مقبول", mgr_rating: "ضعيف", year: 2026, month: 7 },
-      { id: "i4", candidate: "لمى العتيبي", position: "مدير مشاريع", unit_id: "strat", owner: "أ. ريم الشمري", status: "مجدولة", date: "٢٩ يوليو", day: "الأربعاء", time: "١١:٠٠ ص", job_source: "توظيف مباشر", cand_source: "لينكدإن", cand_source_name: "", hr_rating: "", mgr_rating: "", year: 2026, month: 7 },
-      { id: "i5", candidate: "محمد البلوي", position: "مدقق داخلي", unit_id: "audit", owner: "أ. طارق الغامدي", status: "تمت", date: "٢٥ يوليو", day: "الجمعة", time: "١٠:٣٠ ص", job_source: "إعلان خارجي", cand_source: "بيت.كوم", cand_source_name: "", hr_rating: "ممتاز", mgr_rating: "جيد", year: 2026, month: 7 },
+      { id: "i1", candidate: "سارة الدوسري", position: "أخصائي تحليل بيانات", unit_id: "perf", owner: "أ. خالد العمري", status: "مجدولة", date: "2026-07-28", day: "الثلاثاء", time: "10:00", job_source: "توظيف مباشر", cand_source: "لينكدإن", cand_source_name: "", hr_rating: "ممتاز", mgr_rating: "جيد جدًا", year: 2026, month: 7 },
+      { id: "i2", candidate: "فيصل القحطاني", position: "مستشار قانوني", unit_id: "legal", owner: "أ. منى الحربي", status: "تمت", date: "2026-07-26", day: "الأحد", time: "12:30", job_source: "إعلان داخلي", cand_source: "توصية", cand_source_name: "أ. سعد", hr_rating: "جيد جدًا", mgr_rating: "ممتاز", year: 2026, month: 7 },
+      { id: "i3", candidate: "عبدالله الزهراني", position: "أخصائي مشتريات", unit_id: "shared", owner: "أ. نورة السالم", status: "مرفوضة", date: "2026-07-24", day: "الخميس", time: "09:00", job_source: "منصة توظيف", cand_source: "جدارات", cand_source_name: "", hr_rating: "مقبول", mgr_rating: "ضعيف", year: 2026, month: 7 },
+      { id: "i4", candidate: "لمى العتيبي", position: "مدير مشاريع", unit_id: "strat", owner: "أ. ريم الشمري", status: "مجدولة", date: "2026-07-29", day: "الأربعاء", time: "11:00", job_source: "توظيف مباشر", cand_source: "لينكدإن", cand_source_name: "", hr_rating: "", mgr_rating: "", year: 2026, month: 7 },
+      { id: "i5", candidate: "محمد البلوي", position: "مدقق داخلي", unit_id: "audit", owner: "أ. طارق الغامدي", status: "تمت", date: "2026-07-25", day: "الجمعة", time: "10:30", job_source: "إعلان خارجي", cand_source: "بيت.كوم", cand_source_name: "", hr_rating: "ممتاز", mgr_rating: "جيد", year: 2026, month: 7 },
     ],
 
     onboarding: [

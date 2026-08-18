@@ -6,6 +6,20 @@
   const CFG = window.APP_CONFIG || {};
   const MONTHS = ["ينا", "فبر", "مار", "أبر", "ماي", "يون", "يول", "أغس", "سبت", "أكت", "نوف", "ديس"];
   const MONTHS_FULL = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+  const WEEKDAYS = ["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"];
+  // yyyy-mm-dd → اسم اليوم؛ يتجاهل القيم القديمة المكتوبة نصًا
+  function dayOf(d) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d || ""));
+    if (!m) return "";
+    const dt = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(dt) ? "" : WEEKDAYS[dt.getDay()];
+  }
+  // yyyy-mm-dd → "٢٨ يوليو ٢٠٢٦" للعرض
+  function fmtDate(d) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(d || ""));
+    if (!m) return String(d || "");
+    return `${Number(m[3])} ${MONTHS_FULL[Number(m[2]) - 1]} ${m[1]}`;
+  }
   const STAGES = ["المقابلة", "العرض الأولي", "المسح الأمني", "الفحص الطبي", "العرض النهائي", "الانضمام"];
   const PALETTE = ["var(--g-800)", "var(--emerald)", "var(--g-700)", "var(--g-600)", "var(--g-500)", "var(--gold)", "var(--g-400)"];
 
@@ -15,6 +29,7 @@
     node: "root",
     user: null,
     filters: { unit: "", year: 2026, month: 0 }, // month=0 يعني كل الأشهر
+    theme: "light",
     stage: null,   // مرحلة التوظيف المختارة من شريط المراحل
     status: {},    // الحالة المختارة لكل جدول (المتدربون/تمهير)
     edit: false,
@@ -43,6 +58,8 @@
     trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/>',
     check: '<circle cx="12" cy="12" r="9"/><path d="m8 12 2.5 2.5L16 9"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+    sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/>',
+    moon: '<path d="M20.5 14.3A8.5 8.5 0 0 1 9.7 3.5a8.5 8.5 0 1 0 10.8 10.8z"/>',
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ""}</svg>`;
   const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>';
@@ -114,7 +131,7 @@
       const xi1 = cx + r * Math.cos(a1), yi1 = cy + r * Math.sin(a1);
       const xi0 = cx + r * Math.cos(a0), yi0 = cy + r * Math.sin(a0);
       const lg = sw > 180 ? 1 : 0;
-      paths += `<path d="M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${R} ${R} 0 ${lg} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} L ${xi1.toFixed(2)} ${yi1.toFixed(2)} A ${r} ${r} 0 ${lg} 0 ${xi0.toFixed(2)} ${yi0.toFixed(2)} Z" fill="${col}" stroke="#fff" stroke-width="2.5"/>`;
+      paths += `<path d="M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${R} ${R} 0 ${lg} 1 ${x1.toFixed(2)} ${y1.toFixed(2)} L ${xi1.toFixed(2)} ${yi1.toFixed(2)} A ${r} ${r} 0 ${lg} 0 ${xi0.toFixed(2)} ${yi0.toFixed(2)} Z" fill="${col}" style="stroke:var(--panel)" stroke-width="2.5"/>`;
       ang += sw;
     }
     const svg = `<svg viewBox="0 0 188 188" width="${size}" height="${size}">${paths}
@@ -256,7 +273,7 @@
     // المقابلات
     const ivCards = ivs.map((r) => pcard(r.candidate, r.position, [
       ["الإدارة", (unitById(r.unit_id) || {}).name], ["مالك الوظيفة", r.owner],
-      ["التاريخ", r.date ? r.date + (r.day ? " · " + r.day : "") : ""], ["الوقت", r.time],
+      ["التاريخ", r.date ? fmtDate(r.date) + ((r.day || dayOf(r.date)) ? " · " + (r.day || dayOf(r.date)) : "") : ""], ["الوقت", r.time],
       ["مصدر الوظيفة", r.job_source], ["مصدر المرشح", r.cand_source_name ? r.cand_source + " · " + r.cand_source_name : r.cand_source],
       ["تقييم الموارد البشرية", r.hr_rating], ["تقييم الإدارة", r.mgr_rating],
     ], [r.status, r.status === "تمت" ? "b-good" : r.status === "مرفوضة" ? "b-crit" : "b-info"],
@@ -505,7 +522,9 @@
             <select onchange="APP.setFilter('year',this.value)">${yearOpts}</select>${CHEV}</label>
           <label class="tb sel-wrap"><span class="k">الشهر</span>
             <select onchange="APP.setFilter('month',this.value)">${monthOpts}</select>${CHEV}</label>
-          <div class="sp"></div>${editBtn}
+          <div class="sp"></div>
+          <button class="btn btn-g" onclick="APP.toggleTheme()" title="تبديل الوضع الداكن / الفاتح">
+            ${icon(state.theme === "dark" ? "sun" : "moon")} ${state.theme === "dark" ? "فاتح" : "داكن"}</button>${editBtn}
           <div class="tb">📅 <b>${dateTxt}</b></div>
         </div>
         ${body}
@@ -531,9 +550,8 @@
         ["position", "المنصب", "text", r.position, null, false],
         ["unit_id", "الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
         ["owner", "مالك الوظيفة", "text", r.owner, null, false],
-        ["date", "التاريخ", "text", r.date, null, false],
-        ["day", "اليوم", "select", r.day, opts(["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"], r.day), false],
-        ["time", "الوقت", "text", r.time, null, false],
+        ["date", "التاريخ", "date", r.date, null, false],
+        ["time", "الوقت", "time", r.time, null, false],
         ["status", "الحالة", "select", r.status, opts(["مجدولة", "تمت", "مرفوضة"], r.status), false],
         ["job_source", "مصدر الوظيفة", "select", r.job_source, opts(["توظيف مباشر", "إعلان داخلي", "إعلان خارجي", "منصة توظيف"], r.job_source), false],
         ["cand_source", "مصدر المرشح", "select", r.cand_source, opts(["لينكدإن", "جدارات", "بيت.كوم", "توصية", "أخرى"], r.cand_source), false],
@@ -652,6 +670,7 @@
       }
       payload[el.dataset.k] = v;
     });
+    if (kind === "interview") payload.day = dayOf(payload.date);  // اليوم يتبع التاريخ دائمًا
     try {
       if (id) await DB.update(F.table, id, payload);
       else await DB.insert(F.table, payload);
@@ -707,6 +726,19 @@
       const k = el.dataset.k;
       if (k && map[k]) el.textContent = map[k];
     });
+  }
+
+  /* ---------------- الوضع الداكن / الفاتح ---------------- */
+  function applyTheme(mode) {
+    state.theme = mode === "dark" ? "dark" : "light";
+    document.documentElement.setAttribute("data-theme", state.theme);
+    try { localStorage.setItem("adaa_hr_theme", state.theme); } catch (e) {}
+  }
+  function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem("adaa_hr_theme"); } catch (e) {}
+    if (!saved && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) saved = "dark";
+    applyTheme(saved || "light");
   }
 
   /* ---------------- التوجيه والعرض ---------------- */
@@ -768,6 +800,7 @@
   window.APP = {
     setTab(k) { state.tab = k; render(); },
     setStage(i) { state.stage = state.stage === i ? null : i; render(); },
+    toggleTheme() { applyTheme(state.theme === "dark" ? "light" : "dark"); render(); },
     setStatus(key, v) { state.status[key] = v || null; render(); },
     goNode(id) { state.node = id; render(); },
     setFilter(k, v) { state.filters[k] = k === "unit" ? v : Number(v); state.tab = state.tab; render(); },
@@ -805,6 +838,7 @@
   window.addEventListener("hashchange", () => { if (state.user) { state.tab = null; readHash(); render(); } });
 
   (async function init() {
+    initTheme();
     state.user = await AUTH.current();
     if (state.user) await boot();
     else loginScreen();
