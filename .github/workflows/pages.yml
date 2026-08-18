@@ -1,0 +1,50 @@
+# ===========================================================
+# نشر الداشبورد على GitHub Pages عبر GitHub Actions
+# -----------------------------------------------------------
+# مسار بديل عن "Deploy from a branch" الذي علِق عند
+# deployment_queued وفشل بمهلة ١٠ دقائق.
+#
+# لتشغيله: Settings → Pages → Source: GitHub Actions
+# ===========================================================
+name: نشر الداشبورد على GitHub Pages
+
+on:
+  push:
+    branches: ["claude/arabic-hr-dashboard-1qc7ka"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# لا نلغي نشرًا جاريًا — الطابور عند Pages بطيء أصلًا
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: سحب الملفات
+        uses: actions/checkout@v4
+
+      - name: تهيئة Pages
+        uses: actions/configure-pages@v5
+
+      - name: رفع محتوى الموقع
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: النشر
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          # المهلة الافتراضية ١٠ دقائق وهي التي انتهت سابقًا.
+          # رفعناها إلى ٣٠ دقيقة لتحمّل بطء الطابور.
+          timeout: 1800000

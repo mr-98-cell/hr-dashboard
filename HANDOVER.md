@@ -10,8 +10,13 @@ cd hr-dashboard
 python3 -m http.server 8080
 # ثم افتح http://localhost:8080
 ```
-رموز الدخول الافتراضية: `4321` مالك · `1234` مُدخِل بيانات · `1111` عرض فقط
-(تُغيَّر من `assets/config.js`)
+ثلاثة رموز دخول (مالك · مُدخِل بيانات · عرض فقط) تُسلَّم منفصلة عن المستودع.
+المخزَّن في `assets/config.js` بصمة PBKDF2-SHA256 وليس الرمز نفسه.
+لتغييرها: `tools/hash-code.html` ← ولّد البصمة ← ضعها في `ACCESS_CODE_HASHES`.
+
+> ⚠️ الوضع المحلي حماية واجهة فقط — كل البيانات في المتصفح ويمكن قراءتها من
+> أدوات المطوّر. للبيانات الحقيقية اربط Supabase (RLS على الخادم).
+> راجع قسم «الأمان» في `دليل-التسليم.md`.
 
 ## الملفات ووظائفها
 | الملف | الوظيفة |
@@ -24,11 +29,12 @@ python3 -m http.server 8080
 | `assets/app.js` | المنطق: الصفحات، الرسوم، النماذج، الفلاتر |
 | `supabase/schema.sql` | مخطّط قاعدة البيانات + سياسات الحماية |
 | `standalone.html` | نسخة بملف واحد (كل شيء مضمّن) للعرض السريع — **مولّدة** |
-| `build-standalone.py` | يعيد توليد `standalone.html` من `assets/` بعد أي تعديل |
+| `tools/hash-code.html` | توليد بصمة رمز دخول جديد |
+| `tools/build-standalone.js` | إعادة بناء `standalone.html` من ملفات `assets/` |
 
 ## أين تعدّل ماذا؟
 - **نصوص وعناوين**: من التطبيق نفسه (زر «تعديل العناوين» لصلاحية المالك).
-- **رموز الدخول**: `assets/config.js` → `ACCESS_CODES`.
+- **رموز الدخول**: `assets/config.js` → `ACCESS_CODE_HASHES` (البصمة من `tools/hash-code.html`).
 - **الألوان**: `assets/base.css` → المتغيرات في `:root` (تبدأ بـ `--g-`).
 - **بيانات ابتدائية**: `assets/data.js` → الكائن `SEED`.
 - **صفحة جديدة**: `assets/app.js` → أضف دالة عرض ثم سجّلها في `PAGES` وفي `nav` داخل `shell()`.
@@ -36,7 +42,8 @@ python3 -m http.server 8080
 - **جدول بيانات جديد**: `assets/data.js` → أضفه إلى `TABLES` و `SEED`،
   و `supabase/schema.sql` (الجدول + قائمة الجداول في قسم RLS).
 
-> بعد أي تعديل على `assets/` شغّل `python3 build-standalone.py` لتحديث النسخة المدمجة.
+> بعد أي تعديل على ملفات `assets/`، شغّل `node tools/build-standalone.js`
+> حتى لا تتخلّف نسخة `standalone.html` عن المصدر.
 
 ## الربط بقاعدة بيانات (اختياري)
 1. أنشئ مشروعًا على supabase.com.
@@ -50,6 +57,7 @@ python3 -m http.server 8080
 ## النشر على GitHub Pages
 1. ارفع المجلد على مستودعك.
 2. Settings → Pages → Deploy from a branch → `main` → `/ (root)` → Save.
-3. الرابط: `https://<اسم-المستخدم>.github.io/<اسم-المستودع>/hr-dashboard/`
+3. الرابط: `https://<اسم-المستخدم>.github.io/<اسم-المستودع>/`
+   (ملفات الموقع في جذر المستودع، فلا يوجد مجلد إضافي في الرابط)
 
 > ملف `.nojekyll` مهم — لا تحذفه، فهو يمنع GitHub من معالجة الملفات.

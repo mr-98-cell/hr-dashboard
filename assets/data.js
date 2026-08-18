@@ -211,8 +211,68 @@
     resetLocal() { localStorage.removeItem(LS_KEY); },
   };
 
+  /* ---------- اشتقاق بصمة رمز الدخول ---------- */
+  const ROLES = ["owner", "editor", "viewer"];
+  const LOCK_KEY = "adaa_hr_lock";
+
+  const b64 = (buf) => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
+
+  // مقارنة بزمن ثابت — لا تكشف طول التطابق
+  function sameSecret(a, b) {
+    if (a.length !== b.length) return false;
+    let d = 0;
+    for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return d === 0;
+  }
+
+  async function hashCode(code) {
+    const subtle = window.crypto && window.crypto.subtle;
+    if (!subtle) {
+      throw new Error("المتصفح لا يدعم التشفير هنا — افتح الصفحة عبر https أو localhost");
+    }
+    const enc = new TextEncoder();
+    const key = await subtle.importKey("raw", enc.encode(String(code).normalize("NFKC")), "PBKDF2", false, ["deriveBits"]);
+    const bits = await subtle.deriveBits(
+      { name: "PBKDF2", salt: enc.encode(CFG.AUTH_SALT || ""), iterations: Number(CFG.AUTH_ITERATIONS) || 600000, hash: "SHA-256" },
+      key, 256
+    );
+    return b64(bits);
+  }
+
+  /* ---------- إيقاف مؤقت بعد محاولات فاشلة ---------- */
+  function lockState() {
+    try { return JSON.parse(localStorage.getItem(LOCK_KEY) || "null") || { n: 0, until: 0 }; }
+    catch (e) { return { n: 0, until: 0 }; }
+  }
+  function lockRemaining() {
+    const s = lockState();
+    return Math.max(0, Math.ceil((s.until - Date.now()) / 1000));
+  }
+  function noteFailure() {
+    const s = lockState();
+    s.n = (s.n || 0) + 1;
+    const max = Number(CFG.AUTH_MAX_ATTEMPTS) || 5;
+    if (s.n >= max) {
+      s.until = Date.now() + (Number(CFG.AUTH_LOCKOUT_SECONDS) || 60) * 1000;
+      s.n = 0;
+    }
+    try { localStorage.setItem(LOCK_KEY, JSON.stringify(s)); } catch (e) {}
+  }
+  function clearFailures() {
+    try { localStorage.removeItem(LOCK_KEY); } catch (e) {}
+  }
+
   /* ---------- الحسابات والصلاحيات ---------- */
   const AUTH = {
+    hashCode,
+    lockRemaining,
+
+    // هل ما زالت الإعدادات تحمل رموزًا صريحة يقدر أي أحد يقرأها؟
+    plaintextCodesInUse() {
+      const c = CFG.ACCESS_CODES || {};
+      return ROLES.some((r) => c[r]);
+    },
+
     async current() {
       if (!HAS_REMOTE) {
         try { return JSON.parse(sessionStorage.getItem("adaa_hr_user") || "null"); } catch (e) { return null; }
@@ -236,13 +296,31 @@
     },
 
     // دخول بالوضع المحلي: الاسم + رمز الدخول (يحدّد الصلاحية)
-    demoSignIn(name, code) {
-      const codes = CFG.ACCESS_CODES || {};
+    async demoSignIn(name, code) {
+      const wait = lockRemaining();
+      if (wait > 0) throw new Error(`محاولات كثيرة — انتظر ${wait} ثانية ثم أعد المحاولة`);
+
+      const entered = String(code).trim();
+      const plain = CFG.ACCESS_CODES || {};
+      const hashes = CFG.ACCESS_CODE_HASHES || {};
       let role = null;
-      for (const r of ["owner", "editor", "viewer"]) {
-        if (codes[r] && String(code).trim() === String(codes[r])) { role = r; break; }
+
+      // الرموز الصريحة (توافق مع الإعدادات القديمة)
+      for (const r of ROLES) {
+        if (plain[r] && sameSecret(entered, String(plain[r]))) { role = r; break; }
       }
-      if (!role) throw new Error("رمز الدخول غير صحيح");
+
+      // البصمات — الوضع الافتراضي
+      if (!role && ROLES.some((r) => hashes[r])) {
+        const h = await hashCode(entered);
+        for (const r of ROLES) {
+          if (hashes[r] && sameSecret(h, String(hashes[r]))) { role = r; break; }
+        }
+      }
+
+      if (!role) { noteFailure(); throw new Error("رمز الدخول غير صحيح"); }
+
+      clearFailures();
       const u = { name: (name || "").trim() || "مستخدم", role: role, demo: true };
       // بعض المتصفحات تمنع التخزين (تصفح خاص أو إطار مقيّد) — الجلسة تكمل بدونه
       try { sessionStorage.setItem("adaa_hr_user", JSON.stringify(u)); } catch (e) {}
