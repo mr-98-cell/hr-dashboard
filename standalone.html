@@ -1019,6 +1019,7 @@ window.APP_CONFIG = {
     sheet: '<path d="M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M3 9.5h18M3 15h18M9.5 9.5V20M15 9.5V20"/>',
     file: '<path d="M6 2.5h7L18.5 8v13a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1z"/><path d="M13 2.5V8h5.5"/><path d="M8.5 13.5h7M8.5 17h4.5"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>',
+    upload: '<path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/><path d="M12 16V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/>',
   };
   const icon = (n) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${ICONS[n] || ""}</svg>`;
   const CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>';
@@ -1450,7 +1451,9 @@ window.APP_CONFIG = {
           <div class="dbar"><span style="width:${pct(s.filled, s.approved)}%"></span></div>
           <div class="dpct">إشغال ${pct(s.filled, s.approved)}٪ · شاغر ${s.approved - s.filled}${sub ? ` · ${sub} وحدات ↙` : ""}</div></div>`;
       }).join("");
-      const addBtn = canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('unit')">${icon("plus")} إضافة إدارة / قسم</button>` : "";
+      const addBtn = canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('unit')">${icon("plus")} ${esc(t("إضافة إدارة / قسم"))}</button>
+        <button class="btn btn-g" onclick="APP.numbersTemplate()" title="نزّل ملف Excel فيه كل الوحدات النهائية">${icon("sheet")} ${esc(t("قالب الأرقام"))}</button>
+        <button class="btn btn-g" onclick="APP.pickNumbers()" title="ارفع الملف بعد تعبئته لتحديث كل الأرقام دفعة واحدة">${icon("upload")} ${esc(t("استيراد الأرقام"))}</button>` : "";
       ch = `<div style="margin-top:18px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
         <div class="bt ttl-edit" style="font-size:13.5px;color:var(--g-900);margin:0">${esc(t("الإدارات / الأقسام التابعة"))}</div>${addBtn}</div>
@@ -1674,6 +1677,98 @@ window.APP_CONFIG = {
     setTimeout(() => w.print(), 600);
   }
 
+  /* ---------------- أرقام الوحدات: قالب واستيراد ---------------- */
+  // الأرقام تُدخَل على الوحدات النهائية فقط — الوحدات الأعلى تُجمَّع تلقائيًا
+  function leafUnits() { return units().filter((u) => childrenOf(u.id).length === 0); }
+  const NUM_COLS = [["approved", "المعتمدة"], ["filled", "المشغولة"], ["male", "ذكور"], ["female", "إناث"]];
+
+  /* قالب Excel بكل الوحدات النهائية وقيمها الحالية */
+  function exportNumbersTemplate() {
+    const xesc = (v) => String(v == null ? "" : v).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+    const head = ["المعرّف", "الوحدة", "التبعية"].concat(NUM_COLS.map((c) => c[1]));
+    const rows = leafUnits().map((u) => {
+      const parent = pathOf(u.id).slice(0, -1).map((x) => (unitById(x) || {}).name).join(" ← ") || "—";
+      return [u.id, u.name, parent].concat(NUM_COLS.map((c) => Number(u[c[0]] || 0)));
+    });
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
+<Styles><Style ss:ID="h"><Font ss:Bold="1" ss:Color="#FFFFFF"/><Interior ss:Color="#00584C" ss:Pattern="Solid"/></Style>
+<Style ss:ID="lock"><Interior ss:Color="#EEF6F4" ss:Pattern="Solid"/></Style></Styles>
+<Worksheet ss:Name="أرقام الوحدات"><Table>
+<Row>${head.map((h) => `<Cell ss:StyleID="h"><Data ss:Type="String">${xesc(h)}</Data></Cell>`).join("")}</Row>
+${rows.map((r) => `<Row>${r.map((v, i) => i < 3
+        ? `<Cell ss:StyleID="lock"><Data ss:Type="String">${xesc(v)}</Data></Cell>`
+        : `<Cell><Data ss:Type="Number">${xesc(v)}</Data></Cell>`).join("")}</Row>`).join("\n")}
+</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><DisplayRightToLeft/></WorksheetOptions></Worksheet></Workbook>`;
+    download(`قالب-أرقام-الوحدات-${new Date().toISOString().slice(0, 10)}.xls`, "application/vnd.ms-excel", xml);
+    toast("نُزّل القالب — عبّئ الأرقام ثم احفظه CSV وارفعه");
+  }
+
+  /* تقسيم سطر CSV مع احترام علامات الاقتباس */
+  function splitCSV(line, d) {
+    const out = []; let cur = "", q = false;
+    for (let i = 0; i < line.length; i++) {
+      const c = line[i];
+      if (q) {
+        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (c === '"') q = false;
+        else cur += c;
+      } else if (c === '"') q = true;
+      else if (c === d) { out.push(cur); cur = ""; }
+      else cur += c;
+    }
+    out.push(cur);
+    return out.map((x) => x.trim());
+  }
+
+  /* استيراد الأرقام — يقبل الفاصلة أو الفاصلة المنقوطة أو Tab */
+  async function importNumbers(file) {
+    if (!canEdit()) return;
+    let text = await file.text();
+    text = text.replace(/^\ufeff/, "").replace(/\r\n?/g, "\n");
+    const lines = text.split("\n").filter((l) => l.trim());
+    if (lines.length < 2) { alert("الملف فارغ أو بلا صفوف بيانات"); return; }
+
+    const d = [",", ";", "\t"].map((x) => [x, lines[0].split(x).length]).sort((a, b) => b[1] - a[1])[0][0];
+    const head = splitCSV(lines[0], d);
+    const idAt = head.indexOf("المعرّف");
+    const idx = {};
+    NUM_COLS.forEach(([k, label]) => { idx[k] = head.indexOf(label); });
+    if (idAt < 0 || NUM_COLS.some(([k]) => idx[k] < 0)) {
+      alert("أعمدة القالب غير مكتملة — استخدم القالب المنزَّل دون تغيير أسماء الأعمدة");
+      return;
+    }
+
+    const errs = [], warns = [];
+    let changed = 0, same = 0;
+    for (let n = 1; n < lines.length; n++) {
+      const c = splitCSV(lines[n], d);
+      const id = c[idAt];
+      const u = unitById(id);
+      if (!u) { errs.push(`سطر ${n + 1}: معرّف غير معروف «${id}»`); continue; }
+      const patch = {};
+      let bad = false;
+      for (const [k, label] of NUM_COLS) {
+        const raw = String(c[idx[k]] || "0").replace(/[^0-9.-]/g, "");
+        const v = Number(raw);
+        if (!isFinite(v) || v < 0 || v % 1) { errs.push(`سطر ${n + 1}: قيمة غير صالحة في «${label}»`); bad = true; break; }
+        patch[k] = v;
+      }
+      if (bad) continue;
+      if (patch.filled > patch.approved) warns.push(`${u.name}: المشغولة (${patch.filled}) أكبر من المعتمدة (${patch.approved})`);
+      if (NUM_COLS.every(([k]) => Number(u[k] || 0) === patch[k])) { same++; continue; }
+      try { await DB.update("org_units", id, patch); changed++; }
+      catch (e) { errs.push(`${u.name}: تعذّر الحفظ — ${e.message}`); }
+    }
+
+    render();
+    let msg = `حُدِّثت ${changed} وحدة · ${same} بلا تغيير`;
+    if (warns.length) msg += `\n\n⚠️ ${warns.length} تنبيه:\n` + warns.slice(0, 8).join("\n");
+    if (errs.length) msg += `\n\n❌ ${errs.length} خطأ:\n` + errs.slice(0, 8).join("\n");
+    alert(msg);
+  }
+
   /* ---------------- الهيكل العام ---------------- */
   function shell(title, body) {
     const nav = [["index", "الرئيسية", "home"], ["recruitment", "التوظيف", "users"], ["training", "التدريب", "cap"],
@@ -1723,6 +1818,7 @@ ${editBtn}
         <button class="btn btn-p" onclick="APP.saveTitles()">حفظ التعديلات</button>
         <button class="btn btn-x" onclick="APP.toggleEdit()">إلغاء</button></div>
       <div class="mask" id="formMask"><div class="sheet" id="formSheet"></div></div>
+      <input type="file" id="numFile" accept=".csv,text/csv,text/plain" style="display:none" onchange="APP.loadNumbers(this)">
     </div>`;
   }
 
@@ -1939,6 +2035,7 @@ ${editBtn}
     "عدد طلبات المقابلات": "Interview requests", "قيد الإجراء": "In progress", "المكتملة": "Completed",
     "وظائف قيد الإجراء": "Positions in progress", "المكتمل": "Completed", "متبقٍ": "remaining",
     "مصادر المرشحين": "Candidate sources", "مرشح": "candidates",
+    "قالب الأرقام": "Numbers template", "استيراد الأرقام": "Import numbers",
     "لينكدإن": "LinkedIn", "توصية": "Referral", "أخرى": "Other",
     "الوظائف الشاغرة حسب القطاع": "Vacancies by department",
     "نظرة عامة": "Overview", "المقابلات": "Interviews", "مراحل التوظيف": "Recruitment stages",
@@ -2061,6 +2158,9 @@ ${editBtn}
     setTab(k) { state.tab = k; render(); },
     setStage(i) { state.stage = state.stage === i ? null : i; render(); },
     exportExcel, exportPDF,
+    numbersTemplate: exportNumbersTemplate,
+    pickNumbers() { const el = $("#numFile"); if (el) { el.value = ""; el.click(); } },
+    async loadNumbers(el) { if (el.files && el.files[0]) await importNumbers(el.files[0]); },
     toggleLang() { applyLang(state.lang === "en" ? "ar" : "en"); render(); },
     setStatus(key, v) { state.status[key] = v || null; render(); },
     goNode(id) { state.node = id; state.filters.unit = id === "root" ? "" : id; render(); },
