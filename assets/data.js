@@ -111,31 +111,31 @@
     ],
 
     onboarding: [
-      { id: "o1", name: "ليان المطيري", position: "منسق موارد بشرية", grade: "السادسة", start_date: "٣ أغسطس ٢٠٢٦", notes: "مباشرة رسمية", year: 2026, month: 8 },
-      { id: "o2", name: "عبدالعزيز الحارثي", position: "أخصائي أنظمة", grade: "السابعة", start_date: "١٠ أغسطس ٢٠٢٦", notes: "بانتظار إنهاء الإجراءات", year: 2026, month: 8 },
+      { id: "o1", name: "ليان المطيري", position: "منسق موارد بشرية", grade: "السادسة", start_date: "2026-08-03", notes: "مباشرة رسمية", year: 2026, month: 8 },
+      { id: "o2", name: "عبدالعزيز الحارثي", position: "أخصائي أنظمة", grade: "السابعة", start_date: "2026-08-10", notes: "بانتظار إنهاء الإجراءات", year: 2026, month: 8 },
     ],
 
     trainees: [
-      { id: "t1", name: "سلمان العنزي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "perf", start_date: "١ يوليو", end_date: "٣١ أغسطس", phone: "0551234567", status: "قائم", year: 2026, month: 7 },
-      { id: "t2", name: "جواهر الفهد", supervisor: "أ. منى الحربي", university: "جامعة الأميرة نورة", unit_id: "legal", start_date: "١٥ يونيو", end_date: "١٥ سبتمبر", phone: "0559876543", status: "قائم", year: 2026, month: 6 },
-      { id: "t3", name: "راكان الدوسري", supervisor: "أ. نورة السالم", university: "جامعة الملك فهد", unit_id: "shared", start_date: "١ أغسطس", end_date: "٣٠ سبتمبر", phone: "0501112223", status: "تحت الإجراء", year: 2026, month: 8 },
-      { id: "t4", name: "دانة القحطاني", supervisor: "أ. ريم الشمري", university: "جامعة الإمام", unit_id: "strat", start_date: "١٠ يوليو", end_date: "١٠ أكتوبر", phone: "0533334445", status: "قائم", year: 2026, month: 7 },
-      { id: "t5", name: "عبدالرحمن الشهري", supervisor: "أ. طارق الغامدي", university: "جامعة الملك عبدالعزيز", unit_id: "audit", start_date: "٢٠ يونيو", end_date: "٢٠ سبتمبر", phone: "0544445556", status: "مكتمل", year: 2026, month: 6 },
+      { id: "t1", name: "سلمان العنزي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "perf", start_date: "2026-07-01", end_date: "2026-08-31", phone: "0551234567", status: "قائم", year: 2026, month: 7 },
+      { id: "t2", name: "جواهر الفهد", supervisor: "أ. منى الحربي", university: "جامعة الأميرة نورة", unit_id: "legal", start_date: "2026-06-15", end_date: "2026-09-15", phone: "0559876543", status: "قائم", year: 2026, month: 6 },
+      { id: "t3", name: "راكان الدوسري", supervisor: "أ. نورة السالم", university: "جامعة الملك فهد", unit_id: "shared", start_date: "2026-08-01", end_date: "2026-09-30", phone: "0501112223", status: "تحت الإجراء", year: 2026, month: 8 },
+      { id: "t4", name: "دانة القحطاني", supervisor: "أ. ريم الشمري", university: "جامعة الإمام", unit_id: "strat", start_date: "2026-07-10", end_date: "2026-10-10", phone: "0533334445", status: "قائم", year: 2026, month: 7 },
+      { id: "t5", name: "عبدالرحمن الشهري", supervisor: "أ. طارق الغامدي", university: "جامعة الملك عبدالعزيز", unit_id: "audit", start_date: "2026-06-20", end_date: "2026-09-20", phone: "0544445556", status: "مكتمل", year: 2026, month: 6 },
     ],
 
     tamheer: [
-      { id: "tm1", name: "فهد الحربي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "perf", start_date: "١ يوليو", end_date: "٣١ ديسمبر", phone: "0553334445", status: "قائم", year: 2026, month: 7 },
-      { id: "tm2", name: "نورة الشمري", supervisor: "أ. نورة السالم", university: "جامعة الأميرة نورة", unit_id: "shared", start_date: "١ يونيو", end_date: "٣٠ نوفمبر", phone: "0556667778", status: "قائم", year: 2026, month: 6 },
-      { id: "tm3", name: "تركي المالكي", supervisor: "أ. منى الحربي", university: "جامعة الملك فهد", unit_id: "grc", start_date: "١٥ أغسطس", end_date: "١٥ فبراير", phone: "0502223334", status: "تحت الإجراء", year: 2026, month: 8 },
-      { id: "tm4", name: "شهد العتيبي", supervisor: "أ. ريم الشمري", university: "جامعة الملك عبدالعزيز", unit_id: "strat", start_date: "١ يوليو", end_date: "٣١ ديسمبر", phone: "0534445556", status: "قائم", year: 2026, month: 7 },
-      { id: "tm5", name: "بدر الزهراني", supervisor: "أ. طارق الغامدي", university: "جامعة الإمام", unit_id: "audit", start_date: "١ مايو", end_date: "٣١ أكتوبر", phone: "0545556667", status: "مكتمل", year: 2026, month: 5 },
+      { id: "tm1", name: "فهد الحربي", supervisor: "أ. خالد العمري", university: "جامعة الملك سعود", unit_id: "perf", start_date: "2026-07-01", end_date: "2026-12-31", phone: "0553334445", status: "قائم", year: 2026, month: 7 },
+      { id: "tm2", name: "نورة الشمري", supervisor: "أ. نورة السالم", university: "جامعة الأميرة نورة", unit_id: "shared", start_date: "2026-06-01", end_date: "2026-11-30", phone: "0556667778", status: "قائم", year: 2026, month: 6 },
+      { id: "tm3", name: "تركي المالكي", supervisor: "أ. منى الحربي", university: "جامعة الملك فهد", unit_id: "grc", start_date: "2026-08-15", end_date: "2027-02-15", phone: "0502223334", status: "تحت الإجراء", year: 2026, month: 8 },
+      { id: "tm4", name: "شهد العتيبي", supervisor: "أ. ريم الشمري", university: "جامعة الملك عبدالعزيز", unit_id: "strat", start_date: "2026-07-01", end_date: "2026-12-31", phone: "0534445556", status: "قائم", year: 2026, month: 7 },
+      { id: "tm5", name: "بدر الزهراني", supervisor: "أ. طارق الغامدي", university: "جامعة الإمام", unit_id: "audit", start_date: "2026-05-01", end_date: "2026-10-31", phone: "0545556667", status: "مكتمل", year: 2026, month: 5 },
     ],
 
     resignations: [
-      { id: "r1", name: "ماجد السبيعي", position: "محلل نظم", grade: "الثامنة", unit_id: "perf", last_day: "١٥ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
-      { id: "r2", name: "هيفاء المالكي", position: "أخصائي تسويق", grade: "السابعة", unit_id: "shared", last_day: "٣١ يوليو ٢٠٢٦", reason: "", year: 2026, month: 7 },
-      { id: "r3", name: "بندر العتيبي", position: "مدير إدارة", grade: "التاسعة", unit_id: "shared", last_day: "٢٠ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
-      { id: "r4", name: "أروى الجهني", position: "منسق إداري", grade: "السادسة", unit_id: "grc", last_day: "٥ أغسطس ٢٠٢٦", reason: "", year: 2026, month: 8 },
+      { id: "r1", name: "ماجد السبيعي", position: "محلل نظم", grade: "الثامنة", unit_id: "perf", last_day: "2026-08-15", reason: "", year: 2026, month: 8 },
+      { id: "r2", name: "هيفاء المالكي", position: "أخصائي تسويق", grade: "السابعة", unit_id: "shared", last_day: "2026-07-31", reason: "", year: 2026, month: 7 },
+      { id: "r3", name: "بندر العتيبي", position: "مدير إدارة", grade: "التاسعة", unit_id: "shared", last_day: "2026-08-20", reason: "", year: 2026, month: 8 },
+      { id: "r4", name: "أروى الجهني", position: "منسق إداري", grade: "السادسة", unit_id: "grc", last_day: "2026-08-05", reason: "", year: 2026, month: 8 },
     ],
 
     settings: [

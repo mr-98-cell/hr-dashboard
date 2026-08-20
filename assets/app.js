@@ -227,6 +227,140 @@
   }
 
   /* ---------------- الصفحات ---------------- */
+  /* ---------------- الملخّص التنفيذي ---------------- */
+  const TODAY = new Date().toISOString().slice(0, 10);
+  // الشهر المرجعي: المختار من الفلتر، وإلا الشهر الجاري
+  function refMonth() {
+    const y = Number(state.filters.year) || new Date().getFullYear();
+    const m = Number(state.filters.month) || (new Date().getFullYear() === y ? new Date().getMonth() + 1 : 12);
+    return { y: y, m: m };
+  }
+  const prevMonth = (y, m) => (m > 1 ? { y: y, m: m - 1 } : { y: y - 1, m: 12 });
+  // سجلات جدول في شهر بعينه، مع احترام فلتر الإدارة
+  function inMonth(table, y, m) {
+    return (db()[table] || []).filter((r) => Number(r.year) === y && Number(r.month) === m && inUnit(r));
+  }
+
+  function kpiTile(label, value, delta, note, hero) {
+    const cls = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
+    const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "■";
+    const d = delta === null ? "" : `<div class="kpi-d ${cls}">${arrow} ${Math.abs(delta)}<span>· ${esc(note)}</span></div>`;
+    return `<div class="kpi${hero ? " hero" : ""}"><div class="kpi-l">${esc(t(label))}</div>
+      <div class="kpi-v">${esc(value)}</div>${d || `<div class="kpi-d flat"><span>${esc(note)}</span></div>`}</div>`;
+  }
+
+  function execRow(sev, title, sub, page) {
+    const col = sev === "crit" ? "var(--red)" : sev === "warn" ? "var(--amber)" : "var(--muted)";
+    return `<div class="ex"><span class="dot" style="background:${col}"></span>
+      <div class="txt">${esc(title)}<div class="sub">${esc(sub)}</div></div>
+      <a class="go" href="#/${jsq(page)}">${esc(t("عرض"))} ←</a></div>`;
+  }
+
+  function pageExec() {
+    const { y, m } = refMonth();
+    const pm = prevMonth(y, m);
+    const monthName = MONTHS_FULL[m - 1];
+
+    /* ١) الإنجازات = المنضمون − الاستقالات في الشهر نفسه */
+    const net = (yy, mm) => inMonth("onboarding", yy, mm).length - inMonth("resignations", yy, mm).length;
+    const netNow = net(y, m), netPrev = net(pm.y, pm.m);
+    const joins = inMonth("onboarding", y, m).length, exits = inMonth("resignations", y, m).length;
+
+    /* ٢) الشواغر المفتوحة — حالة قائمة، فتتبع الفلتر لا الشهر المرجعي */
+    const vacNow = rows("vacancies").reduce((a, v) => a + Number(v.count || 0), 0);
+    const vacPrev = state.filters.month
+      ? inMonth("vacancies", pm.y, pm.m).reduce((a, v) => a + Number(v.count || 0), 0) : null;
+
+    /* ٣) نسبة الإشغال */
+    const agg = state.filters.unit ? aggregate(state.filters.unit) : aggregateAll();
+    const occ = pct(agg.filled, agg.approved);
+
+    /* ٤) مرشحون تحت الإجراء ٥) متدربون قائمون */
+    const pipeline = rows("candidates").filter((c) => Number(c.stage) < 5).length;
+    const trOn = rows("trainees").filter((r) => r.status === "قائم").length;
+    const tmOn = rows("tamheer").filter((r) => r.status === "قائم").length;
+
+    const kpis = `<div class="kstrip">
+      ${kpiTile("الإنجازات هذا الشهر", (netNow >= 0 ? "+" : "") + netNow, netNow - netPrev,
+        `${joins} ${t("تعيينات")} · ${exits} ${t("استقالات")} · ${monthName}`, true)}
+      ${kpiTile("الشواغر المفتوحة", vacNow, vacPrev === null ? null : vacNow - vacPrev,
+        vacPrev === null ? t("ضمن الفترة المختارة") : t("مقارنة بالشهر السابق"))}
+      ${kpiTile("نسبة الإشغال", occ + "٪", null, `${agg.filled} ${t("من")} ${agg.approved} ${t("وظيفة معتمدة")}`)}
+      ${kpiTile("مرشحون تحت الإجراء", pipeline, null, t("في المراحل الست"))}
+      ${kpiTile("متدربون قائمون", trOn + tmOn, null, `${trOn} ${t("تدريب")} · ${tmOn} ${t("تمهير")}`)}
+    </div>`;
+
+    /* تحديثات — كلها محسوبة من البيانات */
+    const items = [];
+    const noRating = rows("interviews").filter((r) => r.status === "تمت" && !r.hr_rating && !r.mgr_rating);
+    if (noRating.length) items.push(["crit", `${noRating.length} ${t("مقابلات تمت بلا تقييم")}`,
+      t("تعطّل قرار الترشيح — لا تقييم للموارد البشرية ولا للإدارة"), "recruitment"]);
+
+    const overdue = (tbl) => rows(tbl).filter((r) => r.status === "قائم" && r.end_date && r.end_date < TODAY);
+    const late = overdue("trainees").concat(overdue("tamheer"));
+    if (late.length) items.push(["warn", `${late.length} ${t("انتهت فترتهم ولم تُحدَّث حالتهم")}`,
+      `${t("يظهرون «قائم» رغم انقضاء تاريخ النهاية")} — ${esc(late[0].name)}`, "training"]);
+
+    const cands = rows("candidates");
+    const stuck = STAGES.map((st, i) => [st, cands.filter((c) => Number(c.stage) === i).length])
+      .sort((a, b) => b[1] - a[1])[0];
+    if (stuck && stuck[1] > 1) items.push(["warn", `${stuck[1]} ${t("مرشحين واقفون عند")} «${t(stuck[0])}»`,
+      t("أكبر تجمّع في مرحلة واحدة"), "recruitment"]);
+
+    const worst = roots().map((r) => [r, aggregate(r.id)]).filter(([, a]) => a.approved > 0)
+      .sort((a, b) => pct(a[1].filled, a[1].approved) - pct(b[1].filled, b[1].approved))[0];
+    if (worst) items.push(["info", `${uname(worst[0])}: ${t("الإشغال")} ${pct(worst[1].filled, worst[1].approved)}٪ — ${t("الأدنى")}`,
+      `${worst[1].approved - worst[1].filled} ${t("شاغرًا من")} ${worst[1].approved} ${t("وظيفة معتمدة")}`, "sectors"]);
+
+    const updates = `<div class="panel"><div class="p-h">
+        <h3 class="ttl-edit" data-k="تحديثات">${esc(t("تحديثات"))}</h3>
+        <span class="hint">${items.length} ${t("بنود")}</span></div>
+      <div class="body" style="padding-top:2px">${items.length
+        ? items.map((i) => execRow(i[0], i[1], i[2], i[3])).join("")
+        : `<div class="empty">${esc(t("لا توجد بنود تحتاج متابعة"))}</div>`}</div></div>`;
+
+    /* الإشغال حسب القطاع — الأدنى أولًا */
+    const ranked = groupUnits().map((g) => [g, aggregate(g.id)])
+      .sort((a, b) => pct(a[1].filled, a[1].approved) - pct(b[1].filled, b[1].approved));
+    const rankHTML = `<div class="panel"><div class="p-h">
+        <h3 class="ttl-edit" data-k="الإشغال حسب القطاع">${esc(t("الإشغال حسب القطاع"))}</h3>
+        <span class="hint">${esc(t("الأدنى أولًا"))}</span></div>
+      <div class="body"><div class="rank">${ranked.map(([g, a]) => {
+        const v = pct(a.filled, a.approved);
+        const col = v >= 95 ? "var(--emerald)" : v >= 90 ? "var(--g-700)" : "var(--gold)";
+        return `<div class="rk"><span class="nm">${esc(uname(g))}</span>
+          <span class="br"><i style="width:${v}%;background:${col}"></i></span>
+          <span class="pc">${v}٪</span></div>`;
+      }).join("") || `<div class="empty">${esc(t("لا توجد بيانات"))}</div>`}</div></div></div>`;
+
+    /* التعيينات مقابل الاستقالات — من بداية السنة */
+    const lastM = (new Date().getFullYear() === y) ? new Date().getMonth() + 1 : 12;
+    const ms = Array.from({ length: lastM }, (_, i) => i + 1);
+    const hires = ms.map((mm) => inMonth("onboarding", y, mm).length);
+    const outs = ms.map((mm) => inMonth("resignations", y, mm).length);
+    const totH = hires.reduce((a, b) => a + b, 0), totO = outs.reduce((a, b) => a + b, 0);
+    const W = 620, H = 200, pad = 34, mx = Math.max(...hires, ...outs, 4);
+    const px = (i) => pad + (ms.length > 1 ? i * ((W - pad * 2) / (ms.length - 1)) : (W - pad * 2) / 2);
+    const py = (v) => H - 30 - (v / mx) * (H - 64);
+    const path = (arr) => arr.map((v, i) => `${i ? "L" : "M"} ${px(i).toFixed(1)} ${py(v).toFixed(1)}`).join(" ");
+    const dots = (arr, c) => arr.map((v, i) => `<circle cx="${px(i).toFixed(1)}" cy="${py(v).toFixed(1)}" r="3.5" fill="${c}"/>`).join("");
+    const gridl = [0, Math.round(mx / 2), mx].map((v) => `<line x1="${pad}" y1="${py(v)}" x2="${W - pad}" y2="${py(v)}" stroke="var(--line)"/>
+      <text x="${W - pad + 6}" y="${py(v) + 4}" style="font-size:10px;fill:var(--muted)">${v}</text>`).join("");
+    const xlab = ms.map((mm, i) => `<text x="${px(i)}" y="${H - 8}" text-anchor="middle" style="font-size:10px;fill:var(--muted)">${state.lang === "en" ? MONTHS_EN[mm - 1].slice(0, 3) : MONTHS[mm - 1]}</text>`).join("");
+    const trend = `<div class="panel" style="grid-column:1/-1"><div class="p-h">
+        <h3 class="ttl-edit" data-k="التعيينات مقابل الاستقالات">${esc(t("التعيينات مقابل الاستقالات"))} — ${esc(t("من بداية"))} ${y}</h3>
+        <span class="hint">${totH} ${t("تعيينًا")} · ${totO} ${t("استقالة")} · ${t("صافي")} ${totH - totO >= 0 ? "+" : ""}${totH - totO}</span></div>
+      <div class="body"><svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}">${gridl}
+        <path d="${path(hires)}" fill="none" stroke="var(--g-700)" stroke-width="2.5" stroke-linejoin="round"/>
+        <path d="${path(outs)}" fill="none" stroke="var(--gold)" stroke-width="2.5" stroke-dasharray="5 4" stroke-linejoin="round"/>
+        ${dots(hires, "var(--g-700)")}${dots(outs, "var(--gold)")}${xlab}</svg>
+        <div class="slg"><div class="i"><span class="sw" style="background:var(--g-700)"></span>${esc(t("تعيينات"))}</div>
+        <div class="i"><span class="sw" style="background:var(--gold)"></span>${esc(t("استقالات"))}</div></div></div></div>`;
+
+    return kpis + `<div class="vgrid exgrid">${updates}${rankHTML}</div>
+      <div class="vgrid" style="margin-top:18px">${trend}</div>`;
+  }
+
   // اللوحة الرئيسية
   function pageIndex() {
     const vac = rows("vacancies");
@@ -271,7 +405,9 @@
       <div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="${esc(p[0])}">${esc(t(p[0]))}</h3><span class="hint">${esc(p[1])}</span></div>
       <div class="body">${p[2]}</div></div>`).join("");
 
-    return `<div class="tcards">${cards}</div><div class="mrow full"><div class="vgrid">${panels}</div></div>`;
+    const details = `<div class="tcards">${cards}</div><div class="mrow full"><div class="vgrid">${panels}</div></div>`;
+    return tabbed([["exec", "الملخص التنفيذي"], ["det", "تفاصيل"]],
+      [["exec", pageExec()], ["det", details]]);
   }
 
   // التوظيف
@@ -342,7 +478,7 @@
     const addCand = canEdit() ? `<div style="display:flex;margin-bottom:14px"><button class="btn btn-p" onclick="APP.openForm('candidate')">${icon("plus")} إضافة مرشح</button></div>` : "";
 
     const onbCards = rows("onboarding").map((r) => pcard(r.name, r.position, [
-      ["الدرجة", r.grade], ["تاريخ المباشرة", r.start_date], ["الملاحظات", r.notes],
+      ["الدرجة", r.grade], ["تاريخ المباشرة", fmtDate(r.start_date)], ["الملاحظات", r.notes],
     ], null, { form: "onboarding", id: r.id, table: "onboarding" })).join("");
 
     const flow = addCand + `<div class="sumrow">${sum}</div>` + stageNote +
@@ -380,7 +516,7 @@
     const trShown = byStatus("trainees", tr);
     const cards = statusChips("trainees", tr, ["قائم", "تحت الإجراء", "مكتمل"]) + trShown.map((r) => pcard(r.name, r.university, [
       ["المشرف التدريبي", r.supervisor], ["الإدارة", uname(unitById(r.unit_id))],
-      ["بداية التدريب", r.start_date], ["نهاية التدريب", r.end_date], ["رقم الجوال", r.phone],
+      ["بداية التدريب", fmtDate(r.start_date)], ["نهاية التدريب", fmtDate(r.end_date)], ["رقم الجوال", r.phone],
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
       { form: "trainee", id: r.id, table: "trainees" })).join("");
 
@@ -411,7 +547,7 @@
     const tmShown = byStatus("tamheer", tm);
     const cards = statusChips("tamheer", tm, ["قائم", "تحت الإجراء", "مكتمل"]) + tmShown.map((r) => pcard(r.name, r.university, [
       ["المشرف التدريبي", r.supervisor], ["الإدارة", uname(unitById(r.unit_id))],
-      ["بداية البرنامج", r.start_date], ["نهاية البرنامج", r.end_date], ["رقم الجوال", r.phone],
+      ["بداية البرنامج", fmtDate(r.start_date)], ["نهاية البرنامج", fmtDate(r.end_date)], ["رقم الجوال", r.phone],
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
       { form: "tamheer", id: r.id, table: "tamheer" })).join("");
 
@@ -439,7 +575,7 @@
         <div class="body">${colbars(dist)}</div></div></div>`;
 
     const cards = rs.map((r) => pcard(r.name, r.position, [
-      ["الدرجة", r.grade], ["الإدارة", uname(unitById(r.unit_id))], ["آخر يوم عمل", r.last_day], ["السبب", r.reason],
+      ["الدرجة", r.grade], ["الإدارة", uname(unitById(r.unit_id))], ["آخر يوم عمل", fmtDate(r.last_day)], ["السبب", r.reason],
     ], null, { form: "resignation", id: r.id, table: "resignations" })).join("");
 
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="عدد الاستقالات">${esc(t("عدد الاستقالات"))}</h3></div>
@@ -539,10 +675,10 @@
     vacancies:    { title: "الوظائف الشاغرة", cols: [["title","المسمى"],["unitName","الإدارة"],["count","عدد الشواغر"],["received","الطلبات المستلمة"],["status","الحالة"],["period","الفترة"]] },
     candidates:   { title: "المرشحون", cols: [["name","الاسم"],["position","المنصب"],["unitName","الإدارة"],["stageName","المرحلة"],["note","ملاحظة"],["period","الفترة"]] },
     interviews:   { title: "المقابلات", cols: [["candidate","المرشح"],["position","المنصب"],["unitName","الإدارة"],["owner","مالك الوظيفة"],["dateTxt","التاريخ"],["day","اليوم"],["time","الوقت"],["status","الحالة"],["job_source","مصدر الوظيفة"],["cand_source","مصدر المرشح"],["hr_rating","تقييم الموارد البشرية"],["mgr_rating","تقييم الإدارة"],["period","الفترة"]] },
-    onboarding:   { title: "مرحلة الانضمام", cols: [["name","الاسم"],["position","المنصب"],["grade","الدرجة"],["start_date","تاريخ المباشرة"],["notes","ملاحظات"],["period","الفترة"]] },
-    trainees:     { title: "المتدربون", cols: [["name","الاسم"],["university","الجامعة"],["supervisor","المشرف"],["unitName","الإدارة"],["start_date","البداية"],["end_date","النهاية"],["phone","الجوال"],["status","الحالة"],["period","الفترة"]] },
-    tamheer:      { title: "طلبات تمهير", cols: [["name","الاسم"],["university","الجامعة"],["supervisor","المشرف"],["unitName","الإدارة"],["start_date","البداية"],["end_date","النهاية"],["phone","الجوال"],["status","الحالة"],["period","الفترة"]] },
-    resignations: { title: "الاستقالات", cols: [["name","الاسم"],["position","المنصب"],["grade","الدرجة"],["unitName","الإدارة"],["last_day","آخر يوم عمل"],["reason","السبب"],["period","الفترة"]] },
+    onboarding:   { title: "مرحلة الانضمام", cols: [["name","الاسم"],["position","المنصب"],["grade","الدرجة"],["startTxt","تاريخ المباشرة"],["notes","ملاحظات"],["period","الفترة"]] },
+    trainees:     { title: "المتدربون", cols: [["name","الاسم"],["university","الجامعة"],["supervisor","المشرف"],["unitName","الإدارة"],["startTxt","البداية"],["endTxt","النهاية"],["phone","الجوال"],["status","الحالة"],["period","الفترة"]] },
+    tamheer:      { title: "طلبات تمهير", cols: [["name","الاسم"],["university","الجامعة"],["supervisor","المشرف"],["unitName","الإدارة"],["startTxt","البداية"],["endTxt","النهاية"],["phone","الجوال"],["status","الحالة"],["period","الفترة"]] },
+    resignations: { title: "الاستقالات", cols: [["name","الاسم"],["position","المنصب"],["grade","الدرجة"],["unitName","الإدارة"],["lastTxt","آخر يوم عمل"],["reason","السبب"],["period","الفترة"]] },
   };
 
   // يضيف الحقول المشتقة التي لا تُخزَّن (اسم الإدارة، الفترة، نسبة الإشغال…)
@@ -553,6 +689,9 @@
       period: r.year ? `${MONTHS_FULL[(Number(r.month) || 1) - 1]} ${r.year}` : "",
       stageName: STAGES[Number(r.stage)] || "",
       dateTxt: fmtDate(r.date),
+      startTxt: fmtDate(r.start_date),
+      endTxt: fmtDate(r.end_date),
+      lastTxt: fmtDate(r.last_day),
     });
     if (table === "org_units") {
       const a = aggregate(r.id);
@@ -907,7 +1046,7 @@ ${editBtn}
         ["name", "اسم المرشح", "text", r.name, null, false],
         ["position", "المنصب", "text", r.position, null, false],
         ["grade", "الدرجة", "select", r.grade, opts(["الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
-        ["start_date", "تاريخ المباشرة", "text", r.start_date, null, false],
+        ["start_date", "تاريخ المباشرة", "date", r.start_date, null, false],
         ["notes", "الملاحظات", "text", r.notes, null, true],
       ],
     },
@@ -918,8 +1057,8 @@ ${editBtn}
         ["university", "الجامعة", "text", r.university, null, false],
         ["supervisor", "المشرف التدريبي", "text", r.supervisor, null, false],
         ["unit_id", "القطاع / الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
-        ["start_date", "بداية التدريب", "text", r.start_date, null, false],
-        ["end_date", "نهاية التدريب", "text", r.end_date, null, false],
+        ["start_date", "بداية التدريب", "date", r.start_date, null, false],
+        ["end_date", "نهاية التدريب", "date", r.end_date, null, false],
         ["phone", "رقم الجوال", "text", r.phone, null, false],
         ["status", "حالة التدريب", "select", r.status, opts(["قائم", "تحت الإجراء", "مكتمل"], r.status), false],
       ],
@@ -931,8 +1070,8 @@ ${editBtn}
         ["university", "الجامعة", "text", r.university, null, false],
         ["supervisor", "المشرف التدريبي", "text", r.supervisor, null, false],
         ["unit_id", "القطاع / الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
-        ["start_date", "بداية البرنامج", "text", r.start_date, null, false],
-        ["end_date", "نهاية البرنامج", "text", r.end_date, null, false],
+        ["start_date", "بداية البرنامج", "date", r.start_date, null, false],
+        ["end_date", "نهاية البرنامج", "date", r.end_date, null, false],
         ["phone", "رقم الجوال", "text", r.phone, null, false],
         ["status", "حالة الطلب", "select", r.status, opts(["قائم", "تحت الإجراء", "مكتمل"], r.status), false],
       ],
@@ -944,7 +1083,7 @@ ${editBtn}
         ["position", "المنصب", "text", r.position, null, false],
         ["grade", "الدرجة", "select", r.grade, opts(["الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
         ["unit_id", "القطاع / الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
-        ["last_day", "آخر يوم عمل", "text", r.last_day, null, false],
+        ["last_day", "آخر يوم عمل", "date", r.last_day, null, false],
         ["reason", "السبب (اختياري)", "text", r.reason, null, true],
       ],
     },
@@ -1082,6 +1221,21 @@ ${editBtn}
     "وظائف قيد الإجراء": "Positions in progress", "المكتمل": "Completed", "متبقٍ": "remaining",
     "مصادر المرشحين": "Candidate sources", "مرشح": "candidates",
     "قالب الأرقام": "Numbers template", "استيراد الأرقام": "Import numbers",
+    "الملخص التنفيذي": "Executive summary", "تفاصيل": "Details", "تحديثات": "Updates",
+    "الإنجازات هذا الشهر": "Net change this month", "الشواغر المفتوحة": "Open positions",
+    "مرشحون تحت الإجراء": "Candidates in progress", "متدربون قائمون": "Active trainees",
+    "الإشغال حسب القطاع": "Occupancy by department", "الأدنى أولًا": "Lowest first",
+    "التعيينات مقابل الاستقالات": "Hires vs resignations", "من بداية": "since",
+    "مقارنة بالشهر السابق": "vs previous month", "ضمن الفترة المختارة": "within the selected period", "وظيفة معتمدة": "approved positions",
+    "في المراحل الست": "across the six stages", "تعيينات": "hires", "استقالات": "resignations",
+    "تدريب": "training", "تمهير": "Tamheer", "تعيينًا": "hires", "صافي": "net",
+    "عرض": "View", "بنود": "items", "الأدنى": "lowest", "شاغرًا من": "vacant of",
+    "مقابلات تمت بلا تقييم": "completed interviews without rating",
+    "تعطّل قرار الترشيح — لا تقييم للموارد البشرية ولا للإدارة": "Blocking the shortlisting decision — no HR or manager rating",
+    "انتهت فترتهم ولم تُحدَّث حالتهم": "ended but status not updated",
+    "يظهرون «قائم» رغم انقضاء تاريخ النهاية": "Still shown as Active past their end date",
+    "مرشحين واقفون عند": "candidates stuck at", "أكبر تجمّع في مرحلة واحدة": "Largest cluster in one stage",
+    "لا توجد بنود تحتاج متابعة": "Nothing needs follow-up",
     "لينكدإن": "LinkedIn", "توصية": "Referral", "أخرى": "Other",
     "الوظائف الشاغرة حسب القطاع": "Vacancies by department",
     "نظرة عامة": "Overview", "المقابلات": "Interviews", "مراحل التوظيف": "Recruitment stages",
