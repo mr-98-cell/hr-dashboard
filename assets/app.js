@@ -291,7 +291,7 @@
       ${kpiTile("متدربون قائمون", trOn + tmOn, null, `${trOn} ${t("تدريب")} · ${tmOn} ${t("تمهير")}`)}
     </div>`;
 
-    /* تحديثات — كلها محسوبة من البيانات */
+    /* ملاحظات — كلها محسوبة من البيانات */
     const items = [];
     const noRating = rows("interviews").filter((r) => r.status === "تمت" && !r.hr_rating && !r.mgr_rating);
     if (noRating.length) items.push(["crit", `${noRating.length} ${t("مقابلات تمت بلا تقييم")}`,
@@ -314,7 +314,7 @@
       `${worst[1].approved - worst[1].filled} ${t("شاغرًا من")} ${worst[1].approved} ${t("وظيفة معتمدة")}`, "sectors"]);
 
     const updates = `<div class="panel"><div class="p-h">
-        <h3 class="ttl-edit" data-k="تحديثات">${esc(t("تحديثات"))}</h3>
+        <h3 class="ttl-edit" data-k="ملاحظات">${esc(t("ملاحظات"))}</h3>
         <span class="hint">${items.length} ${t("بنود")}</span></div>
       <div class="body" style="padding-top:2px">${items.length
         ? items.map((i) => execRow(i[0], i[1], i[2], i[3])).join("")
@@ -1226,7 +1226,7 @@ ${editBtn}
     "وظائف قيد الإجراء": "Positions in progress", "المكتمل": "Completed", "متبقٍ": "remaining",
     "مصادر المرشحين": "Candidate sources", "مرشح": "candidates",
     "قالب الأرقام": "Numbers template", "استيراد الأرقام": "Import numbers",
-    "الملخص التنفيذي": "Executive summary", "تفاصيل": "Details", "تحديثات": "Updates",
+    "الملخص التنفيذي": "Executive summary", "تفاصيل": "Details", "ملاحظات": "Notes",
     "الإنجازات هذا الشهر": "Net change this month", "الشواغر المفتوحة": "Open positions",
     "مرشحون تحت الإجراء": "Candidates in progress", "متدربون قائمون": "Active trainees",
     "الإشغال حسب القطاع": "Occupancy by department", "الأدنى أولًا": "Lowest first", "الأعلى أولًا": "Highest first",
