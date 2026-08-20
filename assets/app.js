@@ -494,21 +494,24 @@
           <div class="dbar"><span style="width:${pct(s.filled, s.approved)}%"></span></div>
           <div class="dpct">إشغال ${pct(s.filled, s.approved)}٪ · شاغر ${s.approved - s.filled}${sub ? ` · ${sub} وحدات ↙` : ""}</div></div>`;
       }).join("");
-      const addBtn = canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('unit')">${icon("plus")} ${esc(t("إضافة إدارة / قسم"))}</button>
-        <button class="btn btn-g" onclick="APP.numbersTemplate()" title="نزّل ملف Excel فيه كل الوحدات النهائية">${icon("sheet")} ${esc(t("قالب الأرقام"))}</button>
-        <button class="btn btn-g" onclick="APP.pickNumbers()" title="ارفع الملف بعد تعبئته لتحديث كل الأرقام دفعة واحدة">${icon("upload")} ${esc(t("استيراد الأرقام"))}</button>` : "";
       ch = `<div style="margin-top:18px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:10px">
-        <div class="bt ttl-edit" style="font-size:13.5px;color:var(--g-900);margin:0">${esc(t("الإدارات / الأقسام التابعة"))}</div>${addBtn}</div>
+        <div class="bt ttl-edit" style="font-size:13.5px;color:var(--g-900);margin:0 0 10px">${esc(t("الإدارات / الأقسام التابعة"))}</div>
         <div class="dgrid" style="margin-bottom:0">${cardsHtml}</div></div>`;
     }
+
+    // أدوات الهيكل — تظهر في كل مستويات الشجرة، حتى على وحدة نهائية بلا أبناء
+    const unitTools = canEdit() ? `<div class="utools">
+      <button class="btn btn-p" onclick="APP.openForm('unit')">${icon("plus")} ${esc(t("إضافة إدارة / قسم"))}</button>
+      <button class="btn btn-g" onclick="APP.numbersTemplate()" title="نزّل ملف Excel فيه كل الوحدات النهائية">${icon("sheet")} ${esc(t("قالب الأرقام"))}</button>
+      <button class="btn btn-g" onclick="APP.pickNumbers()" title="ارفع الملف بعد تعبئته لتحديث كل الأرقام دفعة واحدة">${icon("upload")} ${esc(t("استيراد الأرقام"))}</button>
+      </div>` : "";
 
     const sub = kids.length
       ? `<div class="dsub">${state.lang === "en" ? `${kids.length} sub-units · statistics aggregated` : `يضم ${kids.length} إدارة/قسم · الإحصائيات مجمّعة على الكل`}</div>`
       : `<div class="dsub">${esc(t("وحدة تنظيمية نهائية"))}</div>`;
 
     return `<div class="mrow full"><div class="vhost"><div class="view show">
-      ${crumbs}<div class="dhead"><h3>${esc(name)}</h3>${chips}</div>${sub}${charts}${ch}</div></div></div>`;
+      ${crumbs}<div class="dhead"><h3>${esc(name)}</h3>${chips}</div>${sub}${unitTools}${charts}${ch}</div></div></div>`;
   }
 
   /* ---------------- غلاف التبويبات ---------------- */
