@@ -31,6 +31,7 @@
     user: null,
     filters: { unit: "", year: 2026, month: 0 }, // month=0 يعني كل الأشهر
     lang: "ar",
+    occSort: "asc",  // ترتيب الإشغال: asc = الأدنى أولًا
     stage: null,   // مرحلة التوظيف المختارة من شريط المراحل
     status: {},    // الحالة المختارة لكل جدول (المتدربون/تمهير)
     edit: false,
@@ -319,12 +320,16 @@
         ? items.map((i) => execRow(i[0], i[1], i[2], i[3])).join("")
         : `<div class="empty">${esc(t("لا توجد بنود تحتاج متابعة"))}</div>`}</div></div>`;
 
-    /* الإشغال حسب القطاع — الأدنى أولًا */
+    /* الإشغال حسب القطاع — الترتيب باختيار المستخدم */
+    const asc = state.occSort !== "desc";
     const ranked = groupUnits().map((g) => [g, aggregate(g.id)])
-      .sort((a, b) => pct(a[1].filled, a[1].approved) - pct(b[1].filled, b[1].approved));
+      .sort((a, b) => (asc ? 1 : -1) * (pct(a[1].filled, a[1].approved) - pct(b[1].filled, b[1].approved)));
+    const sortSw = `<span class="sortsw">
+      <b class="${asc ? "on" : ""}" onclick="APP.setOccSort('asc')">${esc(t("الأدنى أولًا"))}</b>
+      <b class="${asc ? "" : "on"}" onclick="APP.setOccSort('desc')">${esc(t("الأعلى أولًا"))}</b></span>`;
     const rankHTML = `<div class="panel"><div class="p-h">
         <h3 class="ttl-edit" data-k="الإشغال حسب القطاع">${esc(t("الإشغال حسب القطاع"))}</h3>
-        <span class="hint">${esc(t("الأدنى أولًا"))}</span></div>
+        ${sortSw}</div>
       <div class="body"><div class="rank">${ranked.map(([g, a]) => {
         const v = pct(a.filled, a.approved);
         const col = v >= 95 ? "var(--emerald)" : v >= 90 ? "var(--g-700)" : "var(--gold)";
@@ -1224,7 +1229,7 @@ ${editBtn}
     "الملخص التنفيذي": "Executive summary", "تفاصيل": "Details", "تحديثات": "Updates",
     "الإنجازات هذا الشهر": "Net change this month", "الشواغر المفتوحة": "Open positions",
     "مرشحون تحت الإجراء": "Candidates in progress", "متدربون قائمون": "Active trainees",
-    "الإشغال حسب القطاع": "Occupancy by department", "الأدنى أولًا": "Lowest first",
+    "الإشغال حسب القطاع": "Occupancy by department", "الأدنى أولًا": "Lowest first", "الأعلى أولًا": "Highest first",
     "التعيينات مقابل الاستقالات": "Hires vs resignations", "من بداية": "since",
     "مقارنة بالشهر السابق": "vs previous month", "ضمن الفترة المختارة": "within the selected period", "وظيفة معتمدة": "approved positions",
     "في المراحل الست": "across the six stages", "تعيينات": "hires", "استقالات": "resignations",
@@ -1357,6 +1362,7 @@ ${editBtn}
   window.APP = {
     setTab(k) { state.tab = k; render(); },
     setStage(i) { state.stage = state.stage === i ? null : i; render(); },
+    setOccSort(v) { state.occSort = v === "desc" ? "desc" : "asc"; render(); },
     exportExcel, exportPDF,
     numbersTemplate: exportNumbersTemplate,
     pickNumbers() { const el = $("#numFile"); if (el) { el.value = ""; el.click(); } },

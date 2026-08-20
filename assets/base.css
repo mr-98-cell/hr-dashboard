@@ -159,6 +159,10 @@ h1,h2,h3,h4{font-family:"Noto Kufi Arabic","Noto Sans Arabic",sans-serif}
 .ex .sub{font-size:11px;color:var(--muted);margin-top:2px}
 .ex .go{font-size:11.5px;color:var(--g-700);white-space:nowrap;text-decoration:none;font-weight:700}
 .ex .go:hover{text-decoration:underline}
+.sortsw{display:inline-flex;background:var(--g-50);border:1px solid var(--line);border-radius:20px;padding:2px;gap:2px}
+.sortsw b{font-size:11px;font-weight:600;color:var(--ink-2);padding:4px 11px;border-radius:18px;cursor:pointer;transition:.15s;white-space:nowrap}
+.sortsw b:hover{color:var(--g-800)}
+.sortsw b.on{background:var(--g-800);color:#fff}
 .rank{display:flex;flex-direction:column;gap:11px}
 .rk{display:flex;align-items:center;gap:10px;font-size:12.5px}
 .rk .nm{flex:0 0 160px;color:var(--ink-2);line-height:1.3}
