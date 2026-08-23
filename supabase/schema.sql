@@ -159,6 +159,21 @@ create table if not exists public.resignations (
   created_at timestamptz not null default now()
 );
 
+-- ------------------------- سجل التحديثات -------------------------
+-- kind: 'auto'   = يُسجَّل تلقائيًا عند كل إضافة/تعديل/حذف في الداشبورد
+--       'manual' = ملاحظة يكتبها المستخدم بزر «إضافة تحديث»
+create table if not exists public.updates (
+  id         text primary key default gen_random_uuid()::text,
+  kind       text not null default 'manual',
+  text       text not null,
+  source     text,
+  author     text,
+  ts         text,
+  year       integer,
+  month      integer,
+  created_at timestamptz not null default now()
+);
+
 -- ------------------------- الإعدادات والعناوين -------------------------
 create table if not exists public.settings (
   id    text primary key default gen_random_uuid()::text,
@@ -166,7 +181,7 @@ create table if not exists public.settings (
   value text
 );
 
-insert into public.settings (key, value) values ('training_target', '80')
+insert into public.settings (key, value) values ('training_target', '20')
   on conflict (key) do nothing;
 insert into public.settings (key, value) values ('tamheer_target', '40')
   on conflict (key) do nothing;
@@ -181,7 +196,7 @@ do $$
 declare t text;
 begin
   foreach t in array array['profiles','org_units','vacancies','candidates','interviews',
-                           'onboarding','trainees','tamheer','resignations','settings']
+                           'onboarding','trainees','tamheer','resignations','updates','settings']
   loop
     execute format('alter table public.%I enable row level security', t);
 

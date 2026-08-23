@@ -17,6 +17,7 @@
     "trainees",    // المتدربون
     "tamheer",     // طلبات تمهير
     "resignations",// الاستقالات
+    "updates",     // سجل التحديثات: تلقائي من كل تعديل + ملاحظات يدوية
     "settings",    // العناوين القابلة للتعديل
   ];
 
@@ -139,8 +140,11 @@
       { id: "r4", name: "أروى الجهني", position: "منسق إداري", grade: "السادسة", unit_id: "grc", last_day: "2026-08-05", reason: "", year: 2026, month: 8 },
     ],
 
+    // سجل التحديثات — يبدأ فارغًا ويمتلئ من عمل المستخدمين
+    updates: [],
+
     settings: [
-      { id: "targets", key: "training_target", value: "80" },
+      { id: "targets", key: "training_target", value: "20" },
       { id: "tamheer", key: "tamheer_target", value: "40" },
       { id: "titles", key: "titles", value: "{}" },
     ],

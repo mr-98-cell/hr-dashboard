@@ -299,6 +299,33 @@ body.edit .editbar{display:flex}
 .sc b{font-family:"Noto Kufi Arabic";color:var(--g-800)}
 .sc.on{background:var(--g-800);border-color:var(--g-800);color:#fff}
 .sc.on b{color:#fff}
+/* أيقونة حالة داخل البطاقة — لون مميز لكل حالة */
+.sc .ci{display:inline-flex;flex:0 0 16px}
+.sc .ci svg{width:16px;height:16px;stroke:var(--g-700)}
+.sc .cl{white-space:nowrap}
+.sc.i-live .ci svg{stroke:var(--g-600)}
+.sc.i-prog .ci svg{stroke:var(--gold)}
+.sc.i-cal  .ci svg{stroke:var(--amber)}
+.sc.i-done .ci svg{stroke:var(--emerald)}
+.sc.i-reject .ci svg{stroke:var(--red)}
+/* بعد ألوان الحالات ليفوز عند الاختيار */
+.sc.on .ci svg{stroke:#fff}
+
+/* أعلى/أقل قطاع بجانب الرسم البياني */
+.chart-side{display:flex;align-items:stretch;gap:16px;flex-wrap:wrap}
+.chart-side>.cbars{flex:1 1 460px;min-width:0}
+.extremes{flex:0 0 190px;display:flex;flex-direction:column;justify-content:center;gap:10px}
+.ex-card{border:1px solid var(--line);border-radius:14px;padding:13px 15px;background:var(--g-50);
+  display:flex;flex-direction:column;gap:3px}
+.ex-card .k{font-size:11.5px;color:var(--ink-2)}
+.ex-card .n{font-family:"Noto Kufi Arabic";font-size:26px;line-height:1.1;color:var(--g-900)}
+.ex-card .u{font-size:11.5px;color:var(--ink-2)}
+.ex-card.hi{border-right:4px solid var(--g-700)}
+.ex-card.lo{border-right:4px solid var(--g-400)}
+@media(max-width:860px){.extremes{flex:1 1 100%;flex-direction:row}.ex-card{flex:1}}
+
+/* زر مصغّر داخل ترويسات اللوحات */
+.btn.sm{padding:6px 11px;font-size:11.5px}
 .acc{border:1px solid var(--line);border-radius:14px;margin-bottom:10px;overflow:hidden;background:var(--panel)}
 .acc .head{display:flex;align-items:center;gap:12px;padding:13px 16px;cursor:pointer}
 .acc .head:hover{background:var(--g-50)}
