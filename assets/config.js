@@ -37,9 +37,9 @@ window.APP_CONFIG = {
 
   // بصمات الرموز (base64) — وليست الرموز نفسها
   ACCESS_CODE_HASHES: {
-    owner:  "ro+OpMEpdWCquTBLz+w1LArmFr9zOcO3JxAfgk5xhtc=",
-    editor: "VI9g7CPn3o/qJOAZso4u8yMPCGT3+qqOUwEZQo8itVU=",
-    viewer: "Px5xwYKGSDOvtCFZPMGuTbrz2ssQOzxRzxVMcBNGOPs=",
+    owner:  "+fiSgiaGqe+6Oo7AX9/vntEBkk8UQT3hDNl9GYG4UCs=",
+    editor: "eC1U8DO+Qj8O7iqcVYfBnlcvxdUa02Z8M78fADVmxO4=",
+    viewer: "//r92nJvhJSBaQRTeQa5kKytpzFgyC1544AheTBmBKc=",
   },
 
   /* رموز صريحة (اختياري — اتركها فارغة).
