@@ -180,6 +180,35 @@
         changed = true;
       }
     }
+    /* هيكل مهجور من نسخة أقدم — معرّفاته s1..s7 وفروعها.
+       الترحيل الإضافي أعلاه كان يضع الهيكل الجديد فوقه فيظهر هيكلان
+       متراكبان في كل الرسوم. ننقل السجلات إلى ما يقابل قطاعها ثم نحذفه.
+       الوحدات التي يضيفها المستخدم معرّفها يبدأ بـ x فلا تتأثر. */
+    const RETIRED_ROOT = { s1: "perf", s2: "shared", s3: "legal", s4: "gmo", s5: "grc", s6: "strat", s7: "audit" };
+    const isRetired = (id) => /^s\d/.test(String(id || ""));
+    if (db.org_units.some((u) => isRetired(u.id))) {
+      // أي وحدة قديمة تُنسب إلى قطاعها الجذر ثم إلى مقابله الجديد
+      const newIdFor = (id) => {
+        let cur = id;
+        for (let hop = 0; cur && hop < 20; hop++) {
+          if (RETIRED_ROOT[cur]) return RETIRED_ROOT[cur];
+          const u = db.org_units.find((x) => x.id === cur);
+          cur = u ? u.parent_id : null;
+        }
+        return "";
+      };
+      const moveTo = {};
+      db.org_units.forEach((u) => { if (isRetired(u.id)) moveTo[u.id] = newIdFor(u.id); });
+      for (const t of TABLES) {
+        if (t === "org_units" || !Array.isArray(db[t])) continue;
+        db[t].forEach((r) => {
+          if (r.unit_id && Object.prototype.hasOwnProperty.call(moveTo, r.unit_id)) r.unit_id = moveTo[r.unit_id];
+        });
+      }
+      db.org_units = db.org_units.filter((u) => !isRetired(u.id));
+      changed = true;
+    }
+
     if (changed) writeLocal(db);
     return db;
   }

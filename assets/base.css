@@ -311,10 +311,9 @@ body.edit .editbar{display:flex}
 /* بعد ألوان الحالات ليفوز عند الاختيار */
 .sc.on .ci svg{stroke:#fff}
 
-/* أعلى/أقل قطاع بجانب الرسم البياني */
-.chart-side{display:flex;align-items:stretch;gap:16px;flex-wrap:wrap}
-.chart-side>.cbars{flex:1 1 460px;min-width:0}
-.extremes{flex:0 0 190px;display:flex;flex-direction:column;justify-content:center;gap:10px}
+/* أعلى/أقل قطاع — أسفل الرسم البياني، بطاقتان متجاورتان */
+.extremes{display:flex;gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid var(--line)}
+.extremes .ex-card{flex:1}
 .ex-card{border:1px solid var(--line);border-radius:14px;padding:13px 15px;background:var(--g-50);
   display:flex;flex-direction:column;gap:3px}
 .ex-card .k{font-size:11.5px;color:var(--ink-2)}
@@ -346,3 +345,7 @@ body.edit .editbar{display:flex}
 .step .t{font-size:10.5px;margin-top:8px;color:#bcc6c2;text-align:center;line-height:1.3}
 .step.done .t{color:var(--g-700);font-weight:600}
 .step.cur .t{color:var(--g-900);font-weight:800}
+
+/* شجرة القطاعات داخل تبويب نظرة عامة */
+.orgblock{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
+.orgblock:first-child{margin-top:0;padding-top:0;border-top:0;margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--line)}

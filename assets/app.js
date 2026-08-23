@@ -206,6 +206,9 @@
   }
 
   /* شريط حالات قابل للضغط — يعرض من هم في كل حالة */
+  // ترتيب شجرة القطاعات داخل «نظرة عامة»: true = فوق الرسوم
+  const ORG_FIRST = false;
+
   const STATUS_ICON = {
     "": "stack",
     "قائم": "live", "تحت الإجراء": "prog", "مكتمل": "done",
@@ -295,6 +298,21 @@
         month: Number(state.filters.month) || d.getMonth() + 1,
       });
     } catch (e) { /* السجل مساعد — لا نُفشل الحفظ لأجله */ }
+  }
+
+  /* صندوق «التحديثات» لصفحة بعينها — يكتب في جدول updates نفسه،
+     فتظهر ملاحظاته في الملخص التنفيذي تلقائيًا */
+  function updatesBox(source) {
+    const list = rows("updates").filter((u) => u.source === source)
+      .sort((a, b) => String(b.ts || "").localeCompare(String(a.ts || "")));
+    const add = canEdit()
+      ? `<button class="btn btn-p sm" onclick="APP.openForm('update','','${jsq(source)}')">${icon("plus")} ${esc(t("إضافة تحديث"))}</button>` : "";
+    return `<div class="panel" style="margin-bottom:18px"><div class="p-h">
+        <h3 class="ttl-edit" data-tk="1" data-k="تحديثات ${esc(source)}">${esc(t("التحديثات"))}</h3>
+        <div class="hact"><span class="hint">${esc(t("تظهر في الملخص التنفيذي"))}</span>${add}</div></div>
+      <div class="body" style="padding-top:2px">${list.length
+        ? list.map(updateRow).join("")
+        : `<div class="empty">${esc(t("لا توجد تحديثات بعد"))}</div>`}</div></div>`;
   }
 
   function updateRow(u) {
@@ -562,16 +580,19 @@
     const flow = (flowAdd ? `<div style="display:flex;margin-bottom:14px">${flowAdd}</div>` : "")
       + `<div class="sumrow">${sum}</div>` + stageNote + flowBody;
 
-    const views = [["ov", ov], ["iv", ivView], ["flow", flow], ["org", sectorsBody()]];
-    const tabs = [["ov", "نظرة عامة"], ["iv", "المقابلات"], ["flow", "مراحل التوظيف"], ["org", "القطاعات"]];
+    // شجرة القطاعات صارت داخل «نظرة عامة» بدل تبويب مستقل
+    const orgBlock = `<div class="orgblock">${sectorsBody()}</div>`;
+    const ovFull = ORG_FIRST ? orgBlock + ov : ov + orgBlock;
+    const views = [["ov", ovFull], ["iv", ivView], ["flow", flow]];
+    const tabs = [["ov", "نظرة عامة"], ["iv", "المقابلات"], ["flow", "مراحل التوظيف"]];
 
     // النسبة تتبع العنوان: إنجاز طلبات المقابلات = المكتملة من إجمالي المقابلات
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة إنجاز طلبات المقابلات">${esc(t("نسبة إنجاز طلبات المقابلات"))}</h3></div>
       <div class="hero">${ring(pct(ivDone, ivs.length), "var(--g-700)", "إنجاز المقابلات", `${ivDone} ${t("مكتملة من")} ${ivs.length} ${t("مقابلة")}`, 290)}</div>`;
 
-    // تبويب القطاعات يحتاج العرض كاملًا، فلا لوحة جانبية معه
+    // «نظرة عامة» تضم الشجرة الآن فتحتاج العرض كاملًا بلا لوحة جانبية
     const active = state.tab || tabs[0][0];
-    return tabbed(tabs, views, active === "org" ? null : side);
+    return tabbed(tabs, views, active === "ov" ? null : side);
   }
 
   // التدريب
@@ -610,7 +631,7 @@
         <div class="hf"><span>${esc(t("مكتمل"))}</span><b>${done}</b></div></div></div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tt", "المتدربين"]],
-      [["ov", ov], ["tt", plist("جدول المتدربين", "", cards, ["إضافة متدرب", "trainee"])]], side);
+      [["ov", updatesBox("التدريب") + ov], ["tt", plist("جدول المتدربين", "", cards, ["إضافة متدرب", "trainee"])]], side);
   }
 
   // طلبات تمهير
@@ -636,18 +657,6 @@
     ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
       { form: "tamheer", id: r.id, table: "tamheer" })).join("");
 
-    /* تحديثات تمهير — ملاحظات يدوية تظهر هنا وفي الملخص التنفيذي معًا */
-    const tmUpd = rows("updates").filter((u) => u.source === "تمهير")
-      .sort((a, b) => String(b.ts || "").localeCompare(String(a.ts || "")));
-    const addUpd = canEdit()
-      ? `<button class="btn btn-p sm" onclick="APP.openForm('update','','تمهير')">${icon("plus")} ${esc(t("إضافة تحديث"))}</button>` : "";
-    const updBox = `<div class="panel" style="margin-top:16px"><div class="p-h">
-        <h3 class="ttl-edit" data-tk="1" data-k="تحديثات تمهير">${esc(t("تحديثات تمهير"))}</h3>
-        <div class="hact"><span class="hint">${esc(t("تظهر في الملخص التنفيذي"))}</span>${addUpd}</div></div>
-      <div class="body" style="padding-top:2px">${tmUpd.length
-        ? tmUpd.map(updateRow).join("")
-        : `<div class="empty">${esc(t("لا توجد تحديثات بعد"))}</div>`}</div></div>`;
-
     // اللوحة الجانبية: العدد الكامل بطاقة كبيرة — بلا مستهدف
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="إجمالي طلبات تمهير">${esc(t("إجمالي طلبات تمهير"))}</h3></div>
       <div class="hero"><div class="hero-circle"><span class="hero-n">${tm.length}</span><span class="hero-l">${esc(t("طلب تمهير"))}</span></div>
@@ -657,7 +666,7 @@
         <div class="hf"><span>${esc(t("مكتمل"))}</span><b>${done}</b></div></div></div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tm", "المتدربين"]],
-      [["ov", ov + updBox], ["tm", plist("جدول طلبات تمهير", "", cards, ["إضافة طلب تمهير", "tamheer"])]], side);
+      [["ov", updatesBox("تمهير") + ov], ["tm", plist("جدول طلبات تمهير", "", cards, ["إضافة طلب تمهير", "tamheer"])]], side);
   }
 
   // الاستقالات
@@ -667,7 +676,11 @@
     const grades = {};
     rs.forEach((r) => { if (r.grade) grades[r.grade] = (grades[r.grade] || 0) + 1; });
     const gsegs = Object.keys(grades).map((g, i) => [g, grades[g], PALETTE[i % PALETTE.length]]);
-    const thisMonth = rs.filter((r) => Number(r.month) === new Date().getMonth() + 1).length;
+    // حتى تاريخه: كل استقالات السنة المختارة التي مضى آخر يوم عمل لها،
+    // بصرف النظر عن فلتر الشهر — فتبقى ثابتة حين يتنقّل المستخدم بين الأشهر
+    const toDate = (db().resignations || []).filter((r) =>
+      inUnit(r) && Number(r.year) === Number(state.filters.year) &&
+      r.last_day && String(r.last_day) <= TODAY).length;
     // أعلى وأقل قطاع — بجانب الرسم البياني مباشرة لا في اللوحة الجانبية
     const ranked = dist.slice().sort((a, b) => b[1] - a[1]);
     const top = ranked[0] || ["—", 0];
@@ -682,7 +695,7 @@
       <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="حسب الدرجة">${esc(t("حسب الدرجة"))}</h3></div>
         <div class="body">${gsegs.length ? donut(gsegs, rs.length, "استقالة", { size: 190 }) : `<div class="empty">${esc(t("لا توجد بيانات"))}</div>`}</div></div>
       <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="توزيع الاستقالات حسب القطاع">${esc(t("توزيع الاستقالات حسب القطاع"))}</h3><span class="hint">${esc(t("الإجمالي"))} ${rs.length}</span></div>
-        <div class="body"><div class="chart-side">${colbars(dist)}${extremes}</div></div></div></div>`;
+        <div class="body">${colbars(dist)}${extremes}</div></div></div>`;
 
     const cards = rs.map((r) => pcard(r.name, r.position, [
       ["الدرجة", r.grade], ["الإدارة", uname(unitById(r.unit_id))], ["آخر يوم عمل", fmtDate(r.last_day)], ["السبب", r.reason],
@@ -690,7 +703,7 @@
 
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="عدد الاستقالات">${esc(t("عدد الاستقالات"))}</h3></div>
       <div class="hero"><div class="hero-circle"><span class="hero-n">${rs.length}</span><span class="hero-l">${esc(t("استقالة حتى اليوم"))}</span></div>
-      <div class="hero-facts"><div class="hf"><span>${esc(t("استقالات الشهر الحالي"))}</span><b>${thisMonth}</b></div></div></div>`;
+      <div class="hero-facts"><div class="hf"><span>${esc(t("استقالات حتى تاريخه"))}</span><b>${toDate}</b></div></div></div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["rd", "تفاصيل الاستقالات"]],
       [["ov", ov], ["rd", plist("جدول الاستقالات", "", cards, ["تسجيل استقالة", "resignation"])]], side);
