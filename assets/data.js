@@ -54,6 +54,7 @@
       { id: "shared-fin-1", name: "المحاسبة", name_en: "Accounting", parent_id: "shared-fin", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
       { id: "shared-fin-2", name: "الرقابة والتقارير", name_en: "Control & Reporting", parent_id: "shared-fin", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
       { id: "shared-it", name: "التحول الرقمي وتقنية المعلومات", name_en: "Digital Transformation & IT", parent_id: "shared", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
+      { id: "shared-it-sol", name: "حلول الأعمال", name_en: "Business Solutions", parent_id: "shared-it", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
       { id: "shared-it-1", name: "تقنية المعلومات", name_en: "Information Technology", parent_id: "shared-it", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
       { id: "shared-it-2", name: "هندسة البيانات", name_en: "Data Engineering", parent_id: "shared-it", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
       { id: "shared-it-3", name: "التحول الرقمي", name_en: "Digital Transformation", parent_id: "shared-it", approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 },
@@ -164,6 +165,16 @@
     }
     for (const s of SEED.settings) {
       if (!db.settings.some((x) => x.key === s.key)) { db.settings.push(JSON.parse(JSON.stringify(s))); changed = true; }
+    }
+    /* وحدات تنظيمية أُضيفت للهيكل بعد أن حُفظت البيانات محليًا.
+       إضافة فقط — لا نلمس وحدة موجودة حتى لا تضيع الأرقام المُدخلة عليها،
+       ولا نحذف وحدة أضافها المستخدم بنفسه من صفحة القطاعات. */
+    for (const u of SEED.org_units) {
+      if (!db.org_units.some((x) => x.id === u.id)) {
+        const at = db.org_units.findIndex((x) => x.parent_id === u.parent_id);
+        db.org_units.splice(at < 0 ? db.org_units.length : at, 0, JSON.parse(JSON.stringify(u)));
+        changed = true;
+      }
     }
     if (changed) writeLocal(db);
     return db;

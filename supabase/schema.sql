@@ -236,6 +236,7 @@ insert into public.org_units (id, name, name_en, parent_id, approved, filled, ju
   ('shared-fin-1', 'المحاسبة', 'Accounting', 'shared-fin', 0, 0, 0, 0, 0, 0),
   ('shared-fin-2', 'الرقابة والتقارير', 'Control & Reporting', 'shared-fin', 0, 0, 0, 0, 0, 0),
   ('shared-it', 'التحول الرقمي وتقنية المعلومات', 'Digital Transformation & IT', 'shared', 0, 0, 0, 0, 0, 0),
+  ('shared-it-sol', 'حلول الأعمال', 'Business Solutions', 'shared-it', 0, 0, 0, 0, 0, 0),
   ('shared-it-1', 'تقنية المعلومات', 'Information Technology', 'shared-it', 0, 0, 0, 0, 0, 0),
   ('shared-it-2', 'هندسة البيانات', 'Data Engineering', 'shared-it', 0, 0, 0, 0, 0, 0),
   ('shared-it-3', 'التحول الرقمي', 'Digital Transformation', 'shared-it', 0, 0, 0, 0, 0, 0),
