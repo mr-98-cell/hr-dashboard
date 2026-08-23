@@ -281,8 +281,10 @@ body.edit .editbar{display:flex}
 .mi .v{font-size:12.5px;font-weight:700;color:var(--ink-2)}
 .pend{margin-inline-start:auto}
 /* stage follow-up: summary + people accordion + stepper */
-.sumrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-.sum{flex:1;min-width:118px;background:var(--g-50);border:1px solid var(--line);border-radius:13px;padding:11px 12px;text-align:center}
+/* شبكة بعدد المراحل الست: خانات متساوية في صف واحد، فلا ينزل «الانضمام» وحده */
+.sumrow{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:16px}
+.sum{min-width:0;background:var(--g-50);border:1px solid var(--line);border-radius:13px;padding:11px 12px;text-align:center}
+@media(max-width:1180px){.sumrow{grid-template-columns:repeat(3,1fr)}}
 .sum .n{font-family:"Noto Kufi Arabic";font-weight:800;font-size:21px;color:var(--g-800);line-height:1}
 .sum .l{font-size:11px;color:var(--ink-2);margin-top:5px}
 .sum{cursor:pointer;transition:.15s}

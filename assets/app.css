@@ -143,8 +143,8 @@ a.tcard .v{color:var(--g-900)}
   .tbl-h .btn{flex:1;justify-content:center}
 
   /* مراحل التوظيف */
-  .sumrow{gap:8px}
-  .sum{min-width:calc(50% - 8px);padding:10px}
+  .sumrow{gap:8px;grid-template-columns:repeat(2,1fr)}
+  .sum{min-width:0;padding:10px}
   .sum .n{font-size:18px}
   .acc .head{flex-wrap:wrap;gap:8px;padding:12px}
   .acc .pos{flex:1 1 100%;order:3}
