@@ -271,7 +271,7 @@ insert into public.org_units (id, name, name_en, parent_id, approved, filled, ju
   ('legal', 'القانونية', 'Legal', null, 0, 0, 0, 0, 0, 0),
   ('legal-1', 'الاستشارات والعقود', 'Legal Advisory & Contracts', 'legal', 0, 0, 0, 0, 0, 0),
   ('legal-2', 'الامتثال والتمثيل', 'Compliance & Representation', 'legal', 0, 0, 0, 0, 0, 0),
-  ('gmo', 'مكتب المدير العام', 'Director General's Office', null, 0, 0, 0, 0, 0, 0),
+  ('gmo', 'مكتب المدير العام', 'Director General''s Office', null, 0, 0, 0, 0, 0, 0),
   ('gmo-1', 'المراسلات والوثائق والمحفوظات', 'Correspondence, Documents & Archives', 'gmo', 0, 0, 0, 0, 0, 0),
   ('gmo-2', 'الأعمال التنفيذية', 'Executive Affairs', 'gmo', 0, 0, 0, 0, 0, 0),
   ('comm', 'التواصل المؤسسي', 'Corporate Communication', null, 0, 0, 0, 0, 0, 0),
