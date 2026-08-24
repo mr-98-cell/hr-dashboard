@@ -351,3 +351,44 @@ body.edit .editbar{display:flex}
 /* شجرة القطاعات داخل تبويب نظرة عامة */
 .orgblock{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
 .orgblock:first-child{margin-top:0;padding-top:0;border-top:0;margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--line)}
+
+/* ---- شجرة الهيكل القابلة للطي ---- */
+.tree{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel)}
+.trow{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);
+  cursor:pointer;transition:.13s;font-size:13px}
+.trow:last-child{border-bottom:0}
+.trow:hover{background:var(--g-50)}
+.trow.on{background:var(--g-50)}
+.trow .tw{flex:0 0 16px;display:inline-flex;justify-content:center;color:var(--muted);transition:transform .15s}
+.trow .tw svg{width:15px;height:15px}
+.trow .tw.open{transform:rotate(180deg);color:var(--g-700)}
+.trow .tw.empty{opacity:0}
+.trow .tn{flex:1 1 auto;min-width:0;font-weight:700;color:var(--g-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.trow .tbar{flex:0 0 110px;height:7px;border-radius:5px;background:var(--g-100);overflow:hidden}
+.trow .tbar i{display:block;height:100%;background:var(--g-700);border-radius:5px}
+.trow .tv{flex:0 0 84px;text-align:center;color:var(--ink-2);font-size:12px}
+.trow .tv b{font-family:"Noto Kufi Arabic";color:var(--g-800)}
+.trow .tp{flex:0 0 44px;text-align:center;font-size:12px;color:var(--g-700);font-weight:700}
+.trow .tvac{flex:0 0 74px;text-align:center;font-size:11.5px;color:var(--muted)}
+.tkids{background:var(--soft)}
+@media(max-width:760px){.trow .tbar,.trow .tvac{display:none}}
+
+/* ---- بطاقة الوظيفة ---- */
+.jcode{font-size:11px;color:var(--muted);font-family:ui-monospace,monospace}
+.jmeta{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}
+.jmeta .mi{display:flex;flex-direction:column;gap:3px;background:var(--g-50);border:1px solid var(--line);
+  border-radius:11px;padding:9px 12px}
+.jmeta .mi .k{font-size:11px;color:var(--muted)}
+.jmeta .mi .v{font-size:12.5px;color:var(--g-900);font-weight:700}
+.hired{text-align:center;font-size:12.5px;color:var(--ink-2);margin-top:10px}
+.hired b{font-family:"Noto Kufi Arabic";color:var(--g-800);font-size:15px}
+
+/* ---- جدول الانضمام ---- */
+.tblwrap{overflow-x:auto}
+.dtable{width:100%;border-collapse:collapse;font-size:12.5px}
+.dtable th{background:var(--g-800);color:#fff;text-align:right;padding:11px 12px;font-weight:700;white-space:nowrap}
+.dtable th:first-child{border-start-start-radius:12px}
+.dtable th:last-child{border-start-end-radius:12px}
+.dtable td{border-bottom:1px solid var(--line);padding:10px 12px;color:var(--ink)}
+.dtable tbody tr:hover td{background:var(--g-50)}
+.dtable td.ta{text-align:center;white-space:nowrap}

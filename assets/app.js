@@ -21,7 +21,12 @@
     if (!m) return String(d || "");
     return `${Number(m[3])} ${MONTHS_FULL[Number(m[2]) - 1]} ${m[1]}`;
   }
-  const STAGES = ["المقابلة", "العرض الأولي", "المسح الأمني", "الفحص الطبي", "العرض النهائي", "الانضمام"];
+  /* مراحل الوظيفة — «شاغرة» أولها: وظيفة فُتحت ولم يدخلها مرشح بعد.
+     الوظيفة عند «الانضمام» تُعدّ مشغولة وتخرج من الشواغر. */
+  const STAGES = ["شاغرة", "المقابلة", "العرض الأولي", "المسح الأمني", "الفحص الطبي", "العرض النهائي", "الانضمام"];
+  const JOINED = STAGES.length - 1;              // مؤشّر مرحلة الانضمام
+  const TR_STAGES = ["مقابلات", "موافقة", "الانضمام", "مكتمل"];   // التدريب وتمهير
+  const RS_STAGES = ["الإشعار", "منتهي"];                          // الاستقالات
   const PALETTE = ["var(--g-800)", "var(--emerald)", "var(--g-700)", "var(--g-600)", "var(--g-500)", "var(--gold)", "var(--g-400)"];
 
   const state = {
@@ -33,6 +38,7 @@
     lang: "ar",
     occSort: "asc",  // ترتيب الإشغال: asc = الأدنى أولًا
     scope: "all",  // محتوى تقرير PDF: الكل أو قسم بعينه
+    openNodes: {}, // فروع الشجرة المفتوحة في تبويب القطاعات
     stage: null,   // مرحلة التوظيف المختارة من شريط المراحل
     status: {},    // الحالة المختارة لكل جدول (المتدربون/تمهير)
     edit: false,
@@ -82,26 +88,39 @@
   function childrenOf(id) { return units().filter((u) => (u.parent_id || null) === (id || null)); }
   function roots() { return childrenOf(null); }
 
+  /* الوظائف المفتوحة (لم تبلغ الانضمام) داخل وحدة وكل ما تحتها.
+     هي مصدر «الشاغرة» الآن — لم تعد رقمًا يُكتب يدويًا. */
+  function openJobsIn(id) {
+    return (db().jobs || []).filter((j) =>
+      Number(j.stage) < JOINED && j.unit_id && (id ? pathOf(j.unit_id).includes(id) : true)).length;
+  }
+
+  /* المعتمدة تُدخَل يدويًا على الوحدة، والشاغرة تُشتق من الوظائف،
+     والمشغولة = المعتمدة − الشاغرة. */
   function aggregate(id) {
-    const t = { approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 };
+    const t = { approved: 0, junior: 0, senior: 0, male: 0, female: 0 };
     const kids = childrenOf(id);
     if (!kids.length) {
       const u = unitById(id);
       if (u) for (const k in t) t[k] = Number(u[k] || 0);
-      return t;
+    } else {
+      for (const k of kids) {
+        const s = aggregate(k.id);
+        for (const key in t) t[key] += s[key];
+      }
     }
-    for (const k of kids) {
-      const s = aggregate(k.id);
-      for (const key in t) t[key] += s[key];
-    }
+    t.vacant = openJobsIn(id);
+    t.filled = Math.max(0, t.approved - t.vacant);
     return t;
   }
   function aggregateAll() {
-    const t = { approved: 0, filled: 0, junior: 0, senior: 0, male: 0, female: 0 };
+    const t = { approved: 0, junior: 0, senior: 0, male: 0, female: 0 };
     for (const r of roots()) {
       const s = aggregate(r.id);
       for (const k in t) t[k] += s[k];
     }
+    t.vacant = openJobsIn(null);
+    t.filled = Math.max(0, t.approved - t.vacant);
     return t;
   }
   function pathOf(id) {
@@ -344,18 +363,18 @@
     const joins = inMonth("onboarding", y, m).length, exits = inMonth("resignations", y, m).length;
 
     /* ٢) الشواغر المفتوحة — حالة قائمة، فتتبع الفلتر لا الشهر المرجعي */
-    const vacNow = rows("vacancies").reduce((a, v) => a + Number(v.count || 0), 0);
+    const vacNow = rows("jobs").filter((j) => Number(j.stage) < JOINED).length;
     const vacPrev = state.filters.month
-      ? inMonth("vacancies", pm.y, pm.m).reduce((a, v) => a + Number(v.count || 0), 0) : null;
+      ? inMonth("jobs", pm.y, pm.m).filter((j) => Number(j.stage) < JOINED).length : null;
 
     /* ٣) نسبة الإشغال */
     const agg = state.filters.unit ? aggregate(state.filters.unit) : aggregateAll();
     const occ = pct(agg.filled, agg.approved);
 
     /* ٤) مرشحون تحت الإجراء ٥) متدربون قائمون */
-    const pipeline = rows("candidates").filter((c) => Number(c.stage) < 5).length;
-    const trOn = rows("trainees").filter((r) => r.status === "قائم").length;
-    const tmOn = rows("tamheer").filter((r) => r.status === "قائم").length;
+    const pipeline = rows("jobs").filter((j) => Number(j.stage) > 0 && Number(j.stage) < JOINED).length;
+    const trOn = rows("trainees").filter((r) => Number(r.stage) < TR_STAGES.length - 1).length;
+    const tmOn = rows("tamheer").filter((r) => Number(r.stage) < TR_STAGES.length - 1).length;
 
     const kpis = `<div class="kstrip">
       ${kpiTile("الإنجازات هذا الشهر", (netNow >= 0 ? "+" : "") + netNow, netNow - netPrev,
@@ -373,14 +392,14 @@
     if (noRating.length) items.push(["crit", `${noRating.length} ${t("مقابلات تمت بلا تقييم")}`,
       t("تعطّل قرار الترشيح — لا تقييم للموارد البشرية ولا للإدارة"), "recruitment"]);
 
-    const overdue = (tbl) => rows(tbl).filter((r) => r.status === "قائم" && r.end_date && r.end_date < TODAY);
+    const overdue = (tbl) => rows(tbl).filter((r) => Number(r.stage) < TR_STAGES.length - 1 && r.end_date && r.end_date < TODAY);
     const late = overdue("trainees").concat(overdue("tamheer"));
     if (late.length) items.push(["warn", `${late.length} ${t("انتهت فترتهم ولم تُحدَّث حالتهم")}`,
       `${t("يظهرون «قائم» رغم انقضاء تاريخ النهاية")} — ${esc(late[0].name)}`, "training"]);
 
-    const cands = rows("candidates");
+    const cands = rows("jobs");
     const stuck = STAGES.map((st, i) => [st, cands.filter((c) => Number(c.stage) === i).length])
-      .sort((a, b) => b[1] - a[1])[0];
+      .slice(1, JOINED).sort((a, b) => b[1] - a[1])[0];
     if (stuck && stuck[1] > 1) items.push(["warn", `${stuck[1]} ${t("مرشحين واقفون عند")} «${t(stuck[0])}»`,
       t("أكبر تجمّع في مرحلة واحدة"), "recruitment"]);
 
@@ -450,22 +469,21 @@
 
   // اللوحة الرئيسية
   function pageIndex() {
-    const vac = rows("vacancies");
-    const totalVac = vac.reduce((s, v) => s + Number(v.count || 0), 0);
-    const received = vac.reduce((s, v) => s + Number(v.received || 0), 0);
-    const cands = rows("candidates");
-    const done = cands.filter((c) => c.stage >= 5).length;
-    const inprog = cands.filter((c) => c.stage < 5).length;
+    const jobs = rows("jobs");
+    const totalVac = jobs.filter((j) => Number(j.stage) === 0).length;
+    const received = jobs.reduce((s, j) => s + Number(j.received || 0), 0);
+    const done = jobs.filter((j) => Number(j.stage) === JOINED).length;
+    const inprog = jobs.filter((j) => Number(j.stage) > 0 && Number(j.stage) < JOINED).length;
     const trainees = rows("trainees");
     const resg = rows("resignations");
     const target = Number((db().settings.find((s) => s.key === "training_target") || {}).value || 80);
-    const trDone = trainees.filter((t) => t.status === "مكتمل").length;
-    const trProg = trainees.filter((t) => t.status === "تحت الإجراء").length;
-    const trOn = trainees.filter((t) => t.status === "قائم").length;
+    const trDone = trainees.filter((r) => Number(r.stage) === 3).length;
+    const trProg = trainees.filter((r) => Number(r.stage) === 1).length;
+    const trOn = trainees.filter((r) => Number(r.stage) === 2).length;
     const tamheer = rows("tamheer");
-    const tmDone = tamheer.filter((t) => t.status === "مكتمل").length;
-    const tmProg = tamheer.filter((t) => t.status === "تحت الإجراء").length;
-    const tmOn = tamheer.filter((t) => t.status === "قائم").length;
+    const tmDone = tamheer.filter((r) => Number(r.stage) === 3).length;
+    const tmProg = tamheer.filter((r) => Number(r.stage) === 1).length;
+    const tmOn = tamheer.filter((r) => Number(r.stage) === 2).length;
 
     const bySector = distBy(resg);
 
@@ -497,30 +515,38 @@
       [["exec", pageExec()], ["det", details]]);
   }
 
-  // التوظيف — يضم الآن تبويب القطاعات بعد دمج الصفحة الأخيرة فيه
+  // التوظيف — الوظائف هي السجل المركزي، والقطاعات تبويب ضمنها
   function pageRecruitment() {
-    const vac = rows("vacancies");
-    const cands = rows("candidates");
+    const jobs = rows("jobs");
     const ivs = rows("interviews");
-    const totalVac = vac.reduce((s, v) => s + Number(v.count || 0), 0);
-
-    const bySectorVac = distBy(vac, "count");
+    const open = jobs.filter((j) => Number(j.stage) < JOINED);
+    const joined = jobs.filter((j) => Number(j.stage) === JOINED);
+    const received = jobs.reduce((s, j) => s + Number(j.received || 0), 0);
+    const agg = state.filters.unit ? aggregate(state.filters.unit) : aggregateAll();
 
     const ivDone = ivs.filter((i) => i.status === "تمت").length;
     const ivRej = ivs.filter((i) => i.status === "مرفوضة").length;
     const ivSch = ivs.filter((i) => i.status === "مجدولة").length;
     const ivSegs = [["مجدولة", ivSch, "var(--amber)"], ["مكتملة", ivDone, "var(--g-800)"], ["مرفوضة", ivRej, "var(--red)"]];
 
-    /* نظرة عامة — لوحتان بعد حذف رسم مصادر المرشحين */
-    const ov = `<div class="vgrid">
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="عدد طلبات المقابلات">${esc(t("عدد طلبات المقابلات"))}</h3></div>
-        <div class="body">${donut(ivSegs, ivs.length, "مقابلة", { size: 190 })}</div></div>
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="وظائف قيد الإجراء">${esc(t("وظائف قيد الإجراء"))}</h3><span class="hint">${esc(t("من"))} ${ivs.length}</span></div>
-        <div class="body">${donut([["المكتمل", ivDone, "var(--g-800)"], ["الباقي", Math.max(ivs.length - ivDone, 0), "var(--g-100)"]], ivs.length - ivDone, "متبقٍ", { size: 190 })}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="الوظائف الشاغرة حسب القطاع">${esc(t("الوظائف الشاغرة حسب القطاع"))}</h3><span class="hint">${esc(t("الإجمالي"))} ${totalVac}</span></div>
-        <div class="body">${colbars(bySectorVac)}</div></div></div>`;
+    // الشواغر حسب القطاع — تُحسب من الوظائف المفتوحة
+    const openBySector = groupUnits().map((g, i) => [
+      uname(g), open.filter((j) => groupOf(j.unit_id) === g.id).length, PALETTE[i % PALETTE.length],
+    ]);
+    const occ = pct(agg.filled, agg.approved);
 
-    /* المقابلات — رسم فوق، وبطاقات حالات قابلة للضغط تُصفّي الجدول */
+    /* نظرة عامة: الشواغر أولًا وبجانبها نسبة الإشغال، ثم شجرة القطاعات */
+    const ov = `<div class="vgrid">
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="الوظائف الشاغرة حسب القطاع">${esc(t("الوظائف الشاغرة حسب القطاع"))}</h3>
+        <span class="hint">${esc(t("الإجمالي"))} ${open.length}</span></div>
+        <div class="body">${colbars(openBySector)}</div></div>
+      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة الإشغال">${esc(t("نسبة الإشغال"))}</h3></div>
+        <div class="body">${ring(occ, occ >= 90 ? "var(--emerald)" : occ >= 70 ? "var(--g-700)" : "var(--gold)",
+          "إشغال", `${agg.filled} ${t("مشغولة")} · ${agg.vacant} ${t("شاغرة")}`, 210)}
+        <div class="hired">${esc(t("تم توظيف"))} <b>${joined.length}</b> ${esc(t("من أصل"))} <b>${agg.approved}</b> ${esc(t("وظيفة معتمدة"))}</div></div></div>
+      </div>`;
+
+    /* المقابلات */
     const ivShown = byStatus("interviews", ivs);
     const ivCards = ivShown.map((r) => pcard(r.candidate, r.position, [
       ["الإدارة", uname(unitById(r.unit_id))], ["مالك الوظيفة", r.owner],
@@ -538,97 +564,124 @@
       + statusChips("interviews", ivs, ["مجدولة", "تمت", "مرفوضة"])
       + plist("جدول المقابلات", "", ivCards, ["إضافة مقابلة", "interview"]);
 
-    /* المراحل — «الانضمام» صارت بطاقة ضمن الصف لا كتلة مستقلة أسفله */
-    const atStage = (i) => cands.filter((c) => Number(c.stage) === i);
-    const onb = rows("onboarding");
-    const ONB_STAGE = STAGES.length - 1;
-    const stageCount = (i) => (i === ONB_STAGE ? onb.length : atStage(i).length);
+    /* مراحل التوظيف — بطاقة لكل مرحلة، والوظيفة تتحرك بينها */
+    const atStage = (i) => jobs.filter((j) => Number(j.stage) === i);
     const sum = STAGES.map((s, i) => `<div class="sum${state.stage === i ? " on" : ""}" onclick="APP.setStage(${i})" title="${esc(t("اعرض من في هذه المرحلة"))}">
-      <div class="n">${stageCount(i)}</div><div class="l">${esc(t(s))}</div></div>`).join("");
+      <div class="n">${atStage(i).length}</div><div class="l">${esc(t(s))}</div></div>`).join("");
 
-    const accsOf = (list) => list.map((c, i) => {
+    const shown = state.stage == null ? jobs : atStage(state.stage);
+    const accs = shown.map((j, i) => {
       const steps = STAGES.map((s, si) => {
-        const cls = si < c.stage ? "done" : si === c.stage ? "cur" : "";
-        return `<div class="step ${cls}"><div class="c">${si < c.stage ? "✓" : si + 1}</div><div class="t">${esc(t(s))}</div></div>`;
+        const cls = si < j.stage ? "done" : si === Number(j.stage) ? "cur" : "";
+        return `<div class="step ${cls}"><div class="c">${si < j.stage ? "✓" : si}</div><div class="t">${esc(t(s))}</div></div>`;
       }).join("");
-      const upd = canEdit() ? `<button class="btn btn-g" onclick="APP.openForm('candidate','${jsq(c.id)}')">${icon("pen")} ${esc(t("تحديث المرحلة"))}</button>` : "";
+      const upd = canEdit() ? `<button class="btn btn-g" onclick="APP.openForm('job','${jsq(j.id)}')">${icon("pen")} ${esc(t("تحديث المرحلة"))}</button>` : "";
+      const del = canEdit() ? `<button class="btn btn-x" onclick="APP.removeRow('jobs','${jsq(j.id)}')">${icon("trash")} ${esc(t("حذف"))}</button>` : "";
       return `<div class="acc ${i === 0 ? "open" : ""}"><div class="head" onclick="this.parentElement.classList.toggle('open')">
-        <span class="nm">${esc(c.name)}</span><span class="pos">${esc(c.position)}</span>
-        <span class="badge b-info">${esc(t(STAGES[c.stage] || ""))}</span><span class="chev">${CHEV}</span></div>
+        <span class="nm">${esc(j.candidate || t("بلا مرشح بعد"))}</span><span class="pos">${esc(j.title)}</span>
+        <span class="jcode">${esc(j.code || "")}</span>
+        <span class="badge b-info">${esc(t(STAGES[j.stage] || ""))}</span><span class="chev">${CHEV}</span></div>
         <div class="body"><div class="stepper">${steps}</div>
+        <div class="jmeta">
+          <div class="mi"><span class="k">${esc(t("الإدارة"))}</span><span class="v">${esc(uname(unitById(j.unit_id)))}</span></div>
+          <div class="mi"><span class="k">${esc(t("الدرجة الوظيفية"))}</span><span class="v">${esc(j.grade || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("مدير الإدارة"))}</span><span class="v">${esc(j.manager || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("نوع التوظيف"))}</span><span class="v">${esc(j.hire_type || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("المتقدمون"))}</span><span class="v">${esc(String(j.received || 0))}</span></div>
+          <div class="mi"><span class="k">${esc(t("تاريخ المباشرة"))}</span><span class="v">${esc(j.start_date ? fmtDate(j.start_date) : "—")}</span></div>
+        </div>
         <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
-        <div class="note" style="margin:0">${esc(t("آخر تحديث"))}: ${esc(c.note || "—")}</div>${upd}</div></div></div>`;
+        <div class="note" style="margin:0">${esc(t("آخر تحديث"))}: ${esc(j.note || "—")}</div>${upd}${del}</div></div></div>`;
     }).join("");
 
-    let flowAdd, flowBody;
-    if (state.stage === ONB_STAGE) {
-      // بطاقة «الانضمام» مضغوطة: تعرض المنضمين في مكان المرشحين نفسه
-      flowAdd = canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('onboarding')">${icon("plus")} ${esc(t("إضافة منضم"))}</button>` : "";
-      flowBody = onb.length
-        ? `<div class="plist">${onb.map((r) => pcard(r.name, r.position, [
-            ["الدرجة", r.grade], ["تاريخ المباشرة", fmtDate(r.start_date)], ["الملاحظات", r.notes],
-          ], null, { form: "onboarding", id: r.id, table: "onboarding" })).join("")}</div>`
-        : `<div class="empty">${esc(t("لا توجد بيانات مطابقة للفلاتر الحالية"))}</div>`;
-    } else {
-      flowAdd = canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('candidate')">${icon("plus")} ${esc(t("إضافة مرشح"))}</button>` : "";
-      const shown = state.stage == null ? cands : atStage(state.stage);
-      flowBody = accsOf(shown) || `<div class="empty">${esc(t("لا يوجد مرشحون في هذه المرحلة"))}</div>`;
-    }
+    const addJob = canEdit() ? `<div style="display:flex;margin-bottom:14px"><button class="btn btn-p" onclick="APP.openForm('job')">${icon("plus")} ${esc(t("إضافة وظيفة"))}</button></div>` : "";
     const stageNote = state.stage == null ? "" :
-      `<div class="stagenote">${esc(t("تعرض الآن مرحلة"))} «${esc(t(STAGES[state.stage]))}» — ${stageCount(state.stage)}
+      `<div class="stagenote">${esc(t("تعرض الآن مرحلة"))} «${esc(t(STAGES[state.stage]))}» — ${atStage(state.stage).length}
         <button class="btn btn-x" onclick="APP.setStage(${state.stage})">${esc(t("عرض كل المراحل"))}</button></div>`;
-    const flow = (flowAdd ? `<div style="display:flex;margin-bottom:14px">${flowAdd}</div>` : "")
-      + `<div class="sumrow">${sum}</div>` + stageNote + flowBody;
+    const flow = addJob + `<div class="sumrow" style="grid-template-columns:repeat(${STAGES.length},1fr)">${sum}</div>`
+      + stageNote + (accs || `<div class="empty">${esc(t("لا توجد وظائف في هذه المرحلة"))}</div>`);
 
-    // شجرة القطاعات صارت داخل «نظرة عامة» بدل تبويب مستقل
+    /* الانضمام — يُبنى من الوظائف التي بلغت المرحلة الأخيرة، ويقبل إضافة يدوية */
+    const manual = rows("onboarding");
+    const fromJobs = joined.map((j) => ({
+      id: j.id, src: "jobs", name: j.candidate, position: j.title, grade: j.grade,
+      unit_id: j.unit_id, manager: j.manager, start_date: j.start_date,
+    }));
+    const onbRows = fromJobs.concat(manual.map((r) => ({
+      id: r.id, src: "onboarding", name: r.name, position: r.position, grade: r.grade,
+      unit_id: r.unit_id, manager: r.manager, start_date: r.start_date,
+    })));
+    const onbHead = ["الاسم", "المسمى الوظيفي", "الدرجة الوظيفية", "الإدارة", "مدير الإدارة", "تاريخ المباشرة"];
+    const onbBody = onbRows.map((r) => {
+      const act = canEdit()
+        ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="APP.openForm('${r.src === "jobs" ? "job" : "onboarding"}','${jsq(r.id)}')">${icon("pen")}</span>` : "";
+      return `<tr><td>${esc(r.name || "—")}</td><td>${esc(r.position || "—")}</td><td>${esc(r.grade || "—")}</td>
+        <td>${esc(uname(unitById(r.unit_id)) || "—")}</td><td>${esc(r.manager || "—")}</td>
+        <td>${esc(r.start_date ? fmtDate(r.start_date) : "—")}</td><td class="ta">${act}</td></tr>`;
+    }).join("");
+    const addOnb = canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('onboarding')">${icon("plus")} ${esc(t("إضافة يدوية"))}</button>` : "";
+    const onbView = `<div class="card"><div class="tbl-h">
+        <h3 class="ttl-edit" data-tk="1" data-k="جدول الانضمام">${esc(t("جدول الانضمام"))}</h3>
+        <div class="hact"><span class="hint">${joined.length} ${esc(t("من الوظائف"))} · ${manual.length} ${esc(t("يدوي"))}</span>${addOnb}</div></div>
+      <div class="tblwrap">${onbRows.length
+        ? `<table class="dtable"><thead><tr>${onbHead.map((h) => `<th>${esc(t(h))}</th>`).join("")}<th></th></tr></thead>
+           <tbody>${onbBody}</tbody></table>`
+        : `<div class="empty">${esc(t("لا توجد بيانات مطابقة للفلاتر الحالية"))}</div>`}</div></div>`;
+
     const orgBlock = `<div class="orgblock">${sectorsBody()}</div>`;
     const ovFull = ORG_FIRST ? orgBlock + ov : ov + orgBlock;
-    const views = [["ov", ovFull], ["iv", ivView], ["flow", flow]];
-    const tabs = [["ov", "نظرة عامة"], ["iv", "المقابلات"], ["flow", "مراحل التوظيف"]];
+    const views = [["ov", ovFull], ["iv", ivView], ["flow", flow], ["onb", onbView]];
+    const tabs = [["ov", "نظرة عامة"], ["iv", "المقابلات"], ["flow", "مراحل التوظيف"], ["onb", "الانضمام"]];
 
-    // النسبة تتبع العنوان: إنجاز طلبات المقابلات = المكتملة من إجمالي المقابلات
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة إنجاز طلبات المقابلات">${esc(t("نسبة إنجاز طلبات المقابلات"))}</h3></div>
-      <div class="hero">${ring(pct(ivDone, ivs.length), "var(--g-700)", "إنجاز المقابلات", `${ivDone} ${t("مكتملة من")} ${ivs.length} ${t("مقابلة")}`, 290)}</div>`;
+      <div class="hero">${ring(pct(ivDone, ivs.length), "var(--g-700)", "إنجاز المقابلات", `${ivDone} ${t("مكتملة من")} ${ivs.length} ${t("مقابلة")}`, 290)}
+      <div class="hero-facts">
+        <div class="hf"><span>${esc(t("طلبات التوظيف المستلمة"))}</span><b>${received}</b></div>
+        <div class="hf"><span>${esc(t("وظائف مفتوحة"))}</span><b>${open.length}</b></div></div></div>`;
 
-    // «نظرة عامة» تضم الشجرة الآن فتحتاج العرض كاملًا بلا لوحة جانبية
     const active = state.tab || tabs[0][0];
     return tabbed(tabs, views, active === "ov" ? null : side);
   }
+
+  /* شريط مراحل مشترك للتدريب وتمهير — بنفس تنسيق مراحل التوظيف */
+  function stageRow(key, list, stages) {
+    const cur = state.status[key];
+    const at = (i) => list.filter((r) => Number(r.stage) === i).length;
+    const cells = stages.map((s, i) => `<div class="sum${Number(cur) === i ? " on" : ""}"
+        onclick="APP.setStatus('${jsq(key)}','${Number(cur) === i ? "" : i}')" title="${esc(t("اعرض من في هذه المرحلة"))}">
+      <div class="n">${at(i)}</div><div class="l">${esc(t(s))}</div></div>`).join("");
+    return `<div class="sumrow" style="grid-template-columns:repeat(${stages.length},1fr)">${cells}</div>`;
+  }
+  const byStage = (key, list) =>
+    (state.status[key] === "" || state.status[key] == null ? list : list.filter((r) => Number(r.stage) === Number(state.status[key])));
+  const stageBadge = (i, stages) => [stages[i] || "", i === stages.length - 1 ? "b-good" : i === 0 ? "b-warn" : "b-info"];
 
   // التدريب
   function pageTraining() {
     const tr = rows("trainees");
     const target = Number((db().settings.find((s) => s.key === "training_target") || {}).value || 20);
-    const done = tr.filter((t) => t.status === "مكتمل").length;
-    const prog = tr.filter((t) => t.status === "تحت الإجراء").length;
-    const on = tr.filter((t) => t.status === "قائم").length;
-    // المحقق من المستهدف = الحالات الثلاث مجتمعة، تُسحب من المستهدف مباشرة
-    const achieved = on + prog + done;
+    const at = (i) => tr.filter((r) => Number(r.stage) === i).length;
+    const achieved = tr.length;
     const dist = distBy(tr);
 
     const ov = `<div class="vgrid">
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="حالة طلبات التدريب">${esc(t("حالة طلبات التدريب"))}</h3><span class="hint">من إجمالي ${tr.length}</span></div>
-        <div class="body">${donut([["مكتملة", done, "var(--emerald)"], ["تحت الإجراء", prog, "var(--g-600)"], ["قائم", on, "var(--g-400)"]], tr.length, "طلب", { size: 190 })}</div></div>
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة الإنجاز من الطلبات">${esc(t("نسبة الإنجاز من الطلبات"))}</h3></div>
-        <div class="body">${ring(pct(done, tr.length), "var(--emerald)", "من الطلبات", `${done} مكتمل من ${tr.length}`, 200)}</div></div>
-      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="توزيع المتدربين على القطاعات">${esc(t("توزيع المتدربين على القطاعات"))}</h3><span class="hint">الإجمالي ${tr.length}</span></div>
-        <div class="body">${colbars(dist)}</div></div></div>`;
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="توزيع المتدربين على القطاعات">${esc(t("توزيع المتدربين على القطاعات"))}</h3><span class="hint">${esc(t("الإجمالي"))} ${tr.length}</span></div>
+        <div class="body">${colbars(dist)}</div></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="حالة طلبات التدريب">${esc(t("حالة طلبات التدريب"))}</h3><span class="hint">${esc(t("من إجمالي"))} ${tr.length}</span></div>
+        <div class="body">${donut(TR_STAGES.map((s, i) => [s, at(i), PALETTE[i % PALETTE.length]]), tr.length, "طلب", { size: 190, row: true })}</div></div></div>`;
 
-    const trShown = byStatus("trainees", tr);
-    const cards = statusChips("trainees", tr, ["قائم", "تحت الإجراء", "مكتمل"]) + trShown.map((r) => pcard(r.name, r.university, [
+    const trShown = byStage("trainees", tr);
+    const cards = stageRow("trainees", tr, TR_STAGES) + trShown.map((r) => pcard(r.name, r.university, [
       ["المشرف التدريبي", r.supervisor], ["الإدارة", uname(unitById(r.unit_id))],
       ["بداية التدريب", fmtDate(r.start_date)], ["نهاية التدريب", fmtDate(r.end_date)], ["رقم الجوال", r.phone],
-    ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
-      { form: "trainee", id: r.id, table: "trainees" })).join("");
+    ], stageBadge(Number(r.stage), TR_STAGES), { form: "trainee", id: r.id, table: "trainees" })).join("");
 
     const editTarget = canEditTitles()
       ? `<button class="btn btn-x sm" onclick="APP.setTarget('training_target')">${icon("pen")} ${esc(t("تعديل المستهدف"))}</button>` : "";
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="المحقق من المستهدف">${esc(t("المحقق من المستهدف"))}</h3>${editTarget}</div>
       <div class="hero">${ring(pct(achieved, target), "var(--g-700)", "من المستهدف", `${achieved} ${t("من مستهدف")} ${target}`, 290)}
-      <div class="hero-facts">
-        <div class="hf"><span>${esc(t("قائم"))}</span><b>${on}</b></div>
-        <div class="hf"><span>${esc(t("تحت الإجراء"))}</span><b>${prog}</b></div>
-        <div class="hf"><span>${esc(t("مكتمل"))}</span><b>${done}</b></div></div></div>`;
+      <div class="hero-facts">${TR_STAGES.map((s, i) =>
+        `<div class="hf"><span>${esc(t(s))}</span><b>${at(i)}</b></div>`).join("")}</div></div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tt", "المتدربين"]],
       [["ov", updatesBox("التدريب") + ov], ["tt", plist("جدول المتدربين", "", cards, ["إضافة متدرب", "trainee"])]], side);
@@ -637,33 +690,25 @@
   // طلبات تمهير
   function pageTamheer() {
     const tm = rows("tamheer");
-    const done = tm.filter((t) => t.status === "مكتمل").length;
-    const prog = tm.filter((t) => t.status === "تحت الإجراء").length;
-    const on = tm.filter((t) => t.status === "قائم").length;
+    const at = (i) => tm.filter((r) => Number(r.stage) === i).length;
     const dist = distBy(tm);
 
     const ov = `<div class="vgrid">
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="حالة طلبات تمهير">${esc(t("حالة طلبات تمهير"))}</h3><span class="hint">${esc(t("من إجمالي"))} ${tm.length}</span></div>
-        <div class="body">${donut([["مكتملة", done, "var(--emerald)"], ["تحت الإجراء", prog, "var(--g-600)"], ["قائم", on, "var(--g-400)"]], tm.length, "طلب", { size: 190 })}</div></div>
-      <div class="panel"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة الإنجاز من طلبات تمهير">${esc(t("نسبة الإنجاز من الطلبات"))}</h3></div>
-        <div class="body">${ring(pct(done, tm.length), "var(--emerald)", "من الطلبات", `${done} ${t("مكتمل من")} ${tm.length}`, 200)}</div></div>
       <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="توزيع متدربي تمهير على القطاعات">${esc(t("توزيع متدربي تمهير على القطاعات"))}</h3><span class="hint">${esc(t("الإجمالي"))} ${tm.length}</span></div>
-        <div class="body">${colbars(dist)}</div></div></div>`;
+        <div class="body">${colbars(dist)}</div></div>
+      <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="حالة طلبات تمهير">${esc(t("حالة طلبات تمهير"))}</h3><span class="hint">${esc(t("من إجمالي"))} ${tm.length}</span></div>
+        <div class="body">${donut(TR_STAGES.map((s, i) => [s, at(i), PALETTE[i % PALETTE.length]]), tm.length, "طلب", { size: 190, row: true })}</div></div></div>`;
 
-    const tmShown = byStatus("tamheer", tm);
-    const cards = statusChips("tamheer", tm, ["قائم", "تحت الإجراء", "مكتمل"]) + tmShown.map((r) => pcard(r.name, r.university, [
+    const tmShown = byStage("tamheer", tm);
+    const cards = stageRow("tamheer", tm, TR_STAGES) + tmShown.map((r) => pcard(r.name, r.university, [
       ["المشرف التدريبي", r.supervisor], ["الإدارة", uname(unitById(r.unit_id))],
       ["بداية البرنامج", fmtDate(r.start_date)], ["نهاية البرنامج", fmtDate(r.end_date)], ["رقم الجوال", r.phone],
-    ], [r.status, r.status === "مكتمل" ? "b-info" : r.status === "تحت الإجراء" ? "b-warn" : "b-good"],
-      { form: "tamheer", id: r.id, table: "tamheer" })).join("");
+    ], stageBadge(Number(r.stage), TR_STAGES), { form: "tamheer", id: r.id, table: "tamheer" })).join("");
 
-    // اللوحة الجانبية: العدد الكامل بطاقة كبيرة — بلا مستهدف
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="إجمالي طلبات تمهير">${esc(t("إجمالي طلبات تمهير"))}</h3></div>
       <div class="hero"><div class="hero-circle"><span class="hero-n">${tm.length}</span><span class="hero-l">${esc(t("طلب تمهير"))}</span></div>
-      <div class="hero-facts">
-        <div class="hf"><span>${esc(t("قائم"))}</span><b>${on}</b></div>
-        <div class="hf"><span>${esc(t("تحت الإجراء"))}</span><b>${prog}</b></div>
-        <div class="hf"><span>${esc(t("مكتمل"))}</span><b>${done}</b></div></div></div>`;
+      <div class="hero-facts">${TR_STAGES.map((s, i) =>
+        `<div class="hf"><span>${esc(t(s))}</span><b>${at(i)}</b></div>`).join("")}</div></div>`;
 
     return tabbed([["ov", "نظرة عامة"], ["tm", "المتدربين"]],
       [["ov", updatesBox("تمهير") + ov], ["tm", plist("جدول طلبات تمهير", "", cards, ["إضافة طلب تمهير", "tamheer"])]], side);
@@ -697,9 +742,10 @@
       <div class="panel" style="grid-column:1/-1"><div class="p-h"><h3 class="ttl-edit" data-tk="1" data-k="توزيع الاستقالات حسب القطاع">${esc(t("توزيع الاستقالات حسب القطاع"))}</h3><span class="hint">${esc(t("الإجمالي"))} ${rs.length}</span></div>
         <div class="body">${colbars(dist)}${extremes}</div></div></div>`;
 
-    const cards = rs.map((r) => pcard(r.name, r.position, [
+    const rsShown = byStage("resignations", rs);
+    const cards = stageRow("resignations", rs, RS_STAGES) + rsShown.map((r) => pcard(r.name, r.position, [
       ["الدرجة", r.grade], ["الإدارة", uname(unitById(r.unit_id))], ["آخر يوم عمل", fmtDate(r.last_day)], ["السبب", r.reason],
-    ], null, { form: "resignation", id: r.id, table: "resignations" })).join("");
+    ], stageBadge(Number(r.stage), RS_STAGES), { form: "resignation", id: r.id, table: "resignations" })).join("");
 
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="عدد الاستقالات">${esc(t("عدد الاستقالات"))}</h3></div>
       <div class="hero"><div class="hero-circle"><span class="hero-n">${rs.length}</span><span class="hero-l">${esc(t("استقالة حتى اليوم"))}</span></div>
@@ -711,62 +757,57 @@
 
   // القطاعات
   function sectorsBody() {
-    const nid = state.node;
-    const isRoot = nid === "root";
-    const a = isRoot ? aggregateAll() : aggregate(nid);
-    const kids = isRoot ? roots() : childrenOf(nid);
-    const name = isRoot ? t("الجهة كاملة") : uname(unitById(nid));
-    const vac = a.approved - a.filled;
-
-    const path = isRoot ? [] : pathOf(nid);
-    const crumbs = `<div class="crumbs">
-      ${isRoot ? '<span class="cur">الجهة كاملة</span>' : `<a onclick="APP.goNode('root')">الجهة كاملة</a><span class="sep">›</span>`}
-      ${path.map((x, i) => (i === path.length - 1
-        ? `<span class="cur">${esc(uname(unitById(x)))}</span>`
-        : `<a onclick="APP.goNode('${jsq(x)}')">${esc(uname(unitById(x)))}</a><span class="sep">›</span>`)).join("")}
-    </div>`;
+    const a = state.filters.unit ? aggregate(state.filters.unit) : aggregateAll();
 
     const chips = `<div class="dchips">
       <div class="dchip">${esc(t("الوظائف المعتمدة"))}<b>${a.approved}</b></div>
       <div class="dchip">${esc(t("المشغولة"))}<b>${a.filled}</b></div>
-      <div class="dchip">${esc(t("الشاغرة"))}<b>${vac}</b></div>
+      <div class="dchip">${esc(t("الشاغرة"))}<b>${a.vacant}</b></div>
       <div class="dchip hot">${esc(t("نسبة الإشغال"))}<b>${pct(a.filled, a.approved)}٪</b></div></div>`;
 
-    const occ = pct(a.filled, a.approved);
     const charts = `<div class="d3">
-      <div class="dbox occ"><div class="bt ttl-edit" data-k="نسبة الإشغال">${esc(t("نسبة الإشغال"))}</div>
-        ${ring(occ, occ >= 90 ? "var(--emerald)" : occ >= 70 ? "var(--g-700)" : "var(--gold)", "إشغال", `${a.filled} مشغولة · ${vac} شاغرة`, 186)}</div>
-      <div class="dbox"><div class="bt ttl-edit" data-k="الشواغر">${esc(t("الشواغر"))}</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", vac, "var(--g-400)"]])}</div>
+      <div class="dbox"><div class="bt ttl-edit" data-k="الشواغر">${esc(t("الشواغر"))}</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", a.vacant, "var(--g-400)"]])}</div>
       <div class="dbox"><div class="bt ttl-edit" data-k="الجنس">${esc(t("الجنس"))}</div>${splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])}</div></div>`;
 
-    let ch = "";
-    if (kids.length) {
-      const cardsHtml = kids.map((k) => {
-        const s = aggregate(k.id);
-        const sub = childrenOf(k.id).length;
-        const editIc = canEdit() ? `<span class="iact" title="تعديل" onclick="event.stopPropagation();APP.openForm('unit','${jsq(k.id)}')">${icon("pen")}</span>` : "";
-        return `<div class="dcard" onclick="APP.goNode('${jsq(k.id)}')">
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
-          <div class="dn">${esc(uname(k))}</div>${editIc}</div>
-          <div class="dm"><span class="b">${s.filled}</span><span class="s">من ${s.approved} وظيفة معتمدة</span></div>
-          <div class="dbar"><span style="width:${pct(s.filled, s.approved)}%"></span></div>
-          <div class="dpct">إشغال ${pct(s.filled, s.approved)}٪ · شاغر ${s.approved - s.filled}${sub ? ` · ${sub} وحدات ↙` : ""}</div></div>`;
+    /* شجرة قابلة للطي: الضغط على إدارة يفتح تابعيها تحتها مباشرة
+       بدل الانتقال إلى مستوى جديد يبتلع الشاشة. */
+    function branch(list, depth) {
+      return list.map((u) => {
+        const s = aggregate(u.id);
+        const kids = childrenOf(u.id);
+        const isOpen = !!state.openNodes[u.id];
+        const edit = canEdit()
+          ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="event.stopPropagation();APP.openForm('unit','${jsq(u.id)}')">${icon("pen")}</span>` : "";
+        const caret = kids.length
+          ? `<span class="tw${isOpen ? " open" : ""}">${CHEV}</span>`
+          : `<span class="tw empty"></span>`;
+        const p = pct(s.filled, s.approved);
+        const row = `<div class="trow${isOpen ? " on" : ""}" style="padding-inline-start:${depth * 22}px"
+            onclick="APP.toggleNode('${jsq(u.id)}')">
+          ${caret}
+          <span class="tn">${esc(uname(u))}</span>
+          <span class="tbar"><i style="width:${p}%"></i></span>
+          <span class="tv"><b>${s.filled}</b> ${esc(t("من"))} ${s.approved}</span>
+          <span class="tp">${p}٪</span>
+          <span class="tvac">${esc(t("شاغر"))} ${s.vacant}</span>
+          ${edit}</div>`;
+        return row + (isOpen && kids.length ? `<div class="tkids">${branch(kids, depth + 1)}</div>` : "");
       }).join("");
-      ch = `<div style="margin-top:18px">
-        <div class="bt ttl-edit" style="font-size:13.5px;color:var(--g-900);margin:0 0 10px">${esc(t("الإدارات / الأقسام التابعة"))}</div>
-        <div class="dgrid" style="margin-bottom:0">${cardsHtml}</div></div>`;
     }
 
-    // أدوات الهيكل — تظهر في كل مستويات الشجرة، حتى على وحدة نهائية بلا أبناء
+    const scope = state.filters.unit ? childrenOf(state.filters.unit) : roots();
+    const tree = scope.length
+      ? `<div class="tree">${branch(scope, 0)}</div>`
+      : `<div class="empty">${esc(t("وحدة تنظيمية نهائية"))}</div>`;
+
     const unitTools = canEdit() ? `<div class="utools">
       <button class="btn btn-p" onclick="APP.openForm('unit')">${icon("plus")} ${esc(t("إضافة إدارة / قسم"))}</button>
       </div>` : "";
 
-    const sub = kids.length
-      ? `<div class="dsub">${state.lang === "en" ? `${kids.length} sub-units · statistics aggregated` : `يضم ${kids.length} إدارة/قسم · الإحصائيات مجمّعة على الكل`}</div>`
-      : `<div class="dsub">${esc(t("وحدة تنظيمية نهائية"))}</div>`;
-
-    return `${crumbs}<div class="dhead"><h3>${esc(name)}</h3>${chips}</div>${sub}${unitTools}${charts}${ch}`;
+    return `<div class="dhead">${chips}</div>${unitTools}${charts}
+      <div style="margin-top:18px">
+        <div class="bt ttl-edit" style="font-size:13.5px;color:var(--g-900);margin:0 0 10px" data-k="الإدارات / الأقسام التابعة">${esc(t("الإدارات / الأقسام التابعة"))}</div>
+        ${tree}</div>`;
   }
 
   /* الصفحة المستقلة تبقى للروابط القديمة (#/sectors) بعد دمج التبويب في التوظيف */
@@ -796,13 +837,12 @@
   // أعمدة كل جدول كما تُصدَّر
   const EXPORT = {
     org_units:    { title: "الهيكل التنظيمي", cols: [["name","الوحدة"],["parentName","التبعية"],["approved","المعتمدة"],["filled","المشغولة"],["vacant","الشاغرة"],["occ","نسبة الإشغال %"],["male","ذكور"],["female","إناث"]] },
-    vacancies:    { title: "الوظائف الشاغرة", cols: [["title","المسمى"],["unitName","الإدارة"],["count","عدد الشواغر"],["received","الطلبات المستلمة"],["status","الحالة"],["period","الفترة"]] },
-    candidates:   { title: "المرشحون", cols: [["name","الاسم"],["position","المنصب"],["unitName","الإدارة"],["stageName","المرحلة"],["note","ملاحظة"],["period","الفترة"]] },
+    jobs:         { title: "الوظائف", cols: [["code","رقم الوظيفة"],["title","المسمى الوظيفي"],["unitName","الإدارة"],["grade","الدرجة الوظيفية"],["manager","مدير الإدارة"],["hire_type","نوع التوظيف"],["stageName","المرحلة"],["candidate","المرشح"],["received","عدد المتقدمين"],["startTxt","تاريخ المباشرة"],["note","ملاحظة"],["period","الفترة"]] },
     interviews:   { title: "المقابلات", cols: [["candidate","المرشح"],["position","المنصب"],["unitName","الإدارة"],["owner","مالك الوظيفة"],["dateTxt","التاريخ"],["day","اليوم"],["time","الوقت"],["status","الحالة"],["job_source","مصدر الوظيفة"],["cand_source","مصدر المرشح"],["hr_rating","تقييم الموارد البشرية"],["mgr_rating","تقييم الإدارة"],["period","الفترة"]] },
-    onboarding:   { title: "مرحلة الانضمام", cols: [["name","الاسم"],["position","المنصب"],["grade","الدرجة"],["startTxt","تاريخ المباشرة"],["notes","ملاحظات"],["period","الفترة"]] },
-    trainees:     { title: "المتدربون", cols: [["name","الاسم"],["university","الجامعة"],["supervisor","المشرف"],["unitName","الإدارة"],["startTxt","البداية"],["endTxt","النهاية"],["phone","الجوال"],["status","الحالة"],["period","الفترة"]] },
-    tamheer:      { title: "طلبات تمهير", cols: [["name","الاسم"],["university","الجامعة"],["supervisor","المشرف"],["unitName","الإدارة"],["startTxt","البداية"],["endTxt","النهاية"],["phone","الجوال"],["status","الحالة"],["period","الفترة"]] },
-    resignations: { title: "الاستقالات", cols: [["name","الاسم"],["position","المنصب"],["grade","الدرجة"],["unitName","الإدارة"],["lastTxt","آخر يوم عمل"],["reason","السبب"],["period","الفترة"]] },
+    onboarding:   { title: "الانضمام (يدوي)", cols: [["name","الاسم"],["position","المسمى الوظيفي"],["grade","الدرجة الوظيفية"],["unitName","الإدارة"],["manager","مدير الإدارة"],["startTxt","تاريخ المباشرة"],["notes","ملاحظات"],["period","الفترة"]] },
+    trainees:     { title: "المتدربون", cols: [["name","الاسم"],["university","الجامعة"],["supervisor","المشرف"],["unitName","الإدارة"],["startTxt","البداية"],["endTxt","النهاية"],["phone","الجوال"],["stageName","المرحلة"],["period","الفترة"]] },
+    tamheer:      { title: "طلبات تمهير", cols: [["name","الاسم"],["university","الجامعة"],["supervisor","المشرف"],["unitName","الإدارة"],["startTxt","البداية"],["endTxt","النهاية"],["phone","الجوال"],["stageName","المرحلة"],["period","الفترة"]] },
+    resignations: { title: "الاستقالات", cols: [["name","الاسم"],["position","المنصب"],["grade","الدرجة"],["unitName","الإدارة"],["stageName","المرحلة"],["lastTxt","آخر يوم عمل"],["reason","السبب"],["period","الفترة"]] },
   };
 
   // يضيف الحقول المشتقة التي لا تُخزَّن (اسم الإدارة، الفترة، نسبة الإشغال…)
@@ -811,7 +851,7 @@
     const out = Object.assign({}, r, {
       unitName: u.name || "",
       period: r.year ? `${MONTHS_FULL[(Number(r.month) || 1) - 1]} ${r.year}` : "",
-      stageName: STAGES[Number(r.stage)] || "",
+      stageName: (table === "jobs" ? STAGES : table === "resignations" ? RS_STAGES : TR_STAGES)[Number(r.stage)] || "",
       dateTxt: fmtDate(r.date),
       startTxt: fmtDate(r.start_date),
       endTxt: fmtDate(r.end_date),
@@ -821,7 +861,7 @@
       const a = aggregate(r.id);
       out.parentName = (unitById(r.parent_id) || {}).name || "—";
       out.approved = a.approved; out.filled = a.filled;
-      out.vacant = a.approved - a.filled;
+      out.vacant = a.vacant;
       out.occ = pct(a.filled, a.approved);
       out.male = a.male; out.female = a.female;
     }
@@ -829,10 +869,10 @@
   }
 
   /* محتوى التقرير: أي الأقسام تدخل ملف PDF */
-  const SCOPES = [["all", "جميعها"], ["recruitment", "التوظيف"], ["training", "التدريب"],
+  const SCOPES = [["all", "الكل"], ["recruitment", "التوظيف"], ["training", "التدريب"],
     ["tamheer", "تمهير"], ["resignations", "الاستقالات"]];
   const SCOPE_TABLES = {
-    recruitment: ["org_units", "vacancies", "candidates", "interviews", "onboarding"],
+    recruitment: ["org_units", "jobs", "interviews", "onboarding"],
     training: ["trainees"],
     tamheer: ["tamheer"],
     resignations: ["resignations"],
@@ -857,14 +897,15 @@
 
   /* الرسوم التي تدخل تقرير PDF — نفس دوال الرسم المستخدمة في الشاشة */
   function exportCharts() {
-    const vac = rows("vacancies"), cands = rows("candidates"), ivs = rows("interviews");
+    const jobs = rows("jobs"), ivs = rows("interviews");
     const tr = rows("trainees"), tm = rows("tamheer"), rs = rows("resignations");
-    const totalVac = vac.reduce((a, v) => a + Number(v.count || 0), 0);
-    const done = cands.filter((c) => c.stage >= 5).length;
-    const inprog = cands.filter((c) => c.stage < 5).length;
+    const totalVac = jobs.filter((j) => Number(j.stage) === 0).length;
+    const done = jobs.filter((j) => Number(j.stage) === JOINED).length;
+    const inprog = jobs.filter((j) => Number(j.stage) > 0 && Number(j.stage) < JOINED).length;
     const cnt = (list, st) => list.filter((x) => x.status === st).length;
+    const cntStage = (list, i) => list.filter((x) => Number(x.stage) === i).length;
     const a = state.filters.unit ? aggregate(state.filters.unit) : aggregateAll();
-    const vacant = a.approved - a.filled;
+    const vacant = a.vacant;
 
     const gradeSegs = (() => {
       const g = {};
@@ -880,14 +921,14 @@
       ]],
       ["recruitment", "المقابلات", [
         ["عدد طلبات المقابلات", donut([["مجدولة", cnt(ivs, "مجدولة"), "var(--amber)"], ["مكتملة", cnt(ivs, "تمت"), "var(--g-800)"], ["مرفوضة", cnt(ivs, "مرفوضة"), "var(--red)"]], ivs.length, "مقابلة", { size: 200 })],
-        ["الوظائف الشاغرة حسب القطاع", colbars(distBy(vac, "count"))],
+        ["الوظائف الشاغرة حسب القطاع", colbars(distBy(jobs.filter((j) => Number(j.stage) < JOINED)))],
       ]],
       ["training", "التدريب", [
-        ["حالة طلبات التدريب", donut([["مكتملة", cnt(tr, "مكتمل"), "var(--emerald)"], ["تحت الإجراء", cnt(tr, "تحت الإجراء"), "var(--g-600)"], ["قائم", cnt(tr, "قائم"), "var(--g-400)"]], tr.length, "طلب", { size: 190 })],
+        ["حالة طلبات التدريب", donut(TR_STAGES.map((s2, i) => [s2, cntStage(tr, i), PALETTE[i % PALETTE.length]]), tr.length, "طلب", { size: 190 })],
         ["توزيع المتدربين على القطاعات", colbars(distBy(tr))],
       ]],
       ["tamheer", "طلبات تمهير", [
-        ["حالة طلبات تمهير", donut([["مكتملة", cnt(tm, "مكتمل"), "var(--emerald)"], ["تحت الإجراء", cnt(tm, "تحت الإجراء"), "var(--g-600)"], ["قائم", cnt(tm, "قائم"), "var(--g-400)"]], tm.length, "طلب", { size: 190 })],
+        ["حالة طلبات تمهير", donut(TR_STAGES.map((s2, i) => [s2, cntStage(tm, i), PALETTE[i % PALETTE.length]]), tm.length, "طلب", { size: 190 })],
         ["توزيع متدربي تمهير على القطاعات", colbars(distBy(tm))],
       ]],
       ["resignations", "الاستقالات", [
@@ -1048,14 +1089,20 @@ ${editBtn}
         ["mgr_rating", "تقييم الإدارة", "select", r.mgr_rating, opts(["", "ممتاز", "جيد جدًا", "جيد", "مقبول", "ضعيف"], r.mgr_rating), false],
       ],
     },
-    candidate: {
-      table: "candidates", title: "المرشح والمرحلة",
+    job: {
+      table: "jobs", title: "الوظيفة",
       fields: (r) => [
-        ["name", "اسم المرشح", "text", r.name, null, false],
-        ["position", "المنصب", "text", r.position, null, false],
+        ["title", "المسمى الوظيفي", "text", r.title, null, false],
         ["unit_id", "الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
-        ["stage", "المرحلة الحالية", "select", r.stage == null ? 0 : r.stage,
-          STAGES.map((s, i) => `<option value="${i}" ${Number(r.stage) === i ? "selected" : ""}>${s}</option>`).join(""), false],
+        ["grade", "الدرجة الوظيفية", "select", r.grade, opts(["", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
+        ["manager", "مدير الإدارة", "text", r.manager, null, false],
+        ["hire_type", "نوع التوظيف", "select", r.hire_type, opts(["جديدة", "بديلة"], r.hire_type), false],
+        ["opened_date", "تاريخ فتح الوظيفة", "date", r.opened_date, null, false],
+        ["stage", "المرحلة", "select", r.stage == null ? 0 : r.stage,
+          STAGES.map((s, i) => `<option value="${i}" ${Number(r.stage || 0) === i ? "selected" : ""}>${s}</option>`).join(""), false],
+        ["candidate", "اسم المرشح", "text", r.candidate, null, false],
+        ["received", "عدد المتقدمين", "number", r.received, null, false],
+        ["start_date", "تاريخ المباشرة", "date", r.start_date, null, false],
         ["note", "آخر تحديث / ملاحظة", "text", r.note, null, true],
       ],
     },
@@ -1064,7 +1111,9 @@ ${editBtn}
       fields: (r) => [
         ["name", "اسم المرشح", "text", r.name, null, false],
         ["position", "المنصب", "text", r.position, null, false],
-        ["grade", "الدرجة", "select", r.grade, opts(["الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
+        ["grade", "الدرجة الوظيفية", "select", r.grade, opts(["الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
+        ["unit_id", "الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
+        ["manager", "مدير الإدارة", "text", r.manager, null, false],
         ["start_date", "تاريخ المباشرة", "date", r.start_date, null, false],
         ["notes", "الملاحظات", "text", r.notes, null, true],
       ],
@@ -1079,7 +1128,8 @@ ${editBtn}
         ["start_date", "بداية التدريب", "date", r.start_date, null, false],
         ["end_date", "نهاية التدريب", "date", r.end_date, null, false],
         ["phone", "رقم الجوال", "text", r.phone, null, false],
-        ["status", "حالة التدريب", "select", r.status, opts(["قائم", "تحت الإجراء", "مكتمل"], r.status), false],
+        ["stage", "المرحلة", "select", r.stage == null ? 0 : r.stage,
+          TR_STAGES.map((s, i) => `<option value="${i}" ${Number(r.stage || 0) === i ? "selected" : ""}>${s}</option>`).join(""), false],
       ],
     },
     tamheer: {
@@ -1092,7 +1142,8 @@ ${editBtn}
         ["start_date", "بداية البرنامج", "date", r.start_date, null, false],
         ["end_date", "نهاية البرنامج", "date", r.end_date, null, false],
         ["phone", "رقم الجوال", "text", r.phone, null, false],
-        ["status", "حالة الطلب", "select", r.status, opts(["قائم", "تحت الإجراء", "مكتمل"], r.status), false],
+        ["stage", "المرحلة", "select", r.stage == null ? 0 : r.stage,
+          TR_STAGES.map((s, i) => `<option value="${i}" ${Number(r.stage || 0) === i ? "selected" : ""}>${s}</option>`).join(""), false],
       ],
     },
     resignation: {
@@ -1102,6 +1153,8 @@ ${editBtn}
         ["position", "المنصب", "text", r.position, null, false],
         ["grade", "الدرجة", "select", r.grade, opts(["الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
         ["unit_id", "القطاع / الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
+        ["stage", "المرحلة", "select", r.stage == null ? 0 : r.stage,
+          RS_STAGES.map((s, i) => `<option value="${i}" ${Number(r.stage || 0) === i ? "selected" : ""}>${s}</option>`).join(""), false],
         ["last_day", "آخر يوم عمل", "date", r.last_day, null, false],
         ["reason", "السبب (اختياري)", "text", r.reason, null, true],
       ],
@@ -1164,7 +1217,7 @@ ${editBtn}
     const payload = {};
     $("#formSheet").querySelectorAll("[data-k]").forEach((el) => {
       let v = el.value;
-      if (el.type === "number" || ["stage", "year", "month", "approved", "filled", "junior", "senior", "male", "female"].includes(el.dataset.k)) {
+      if (el.type === "number" || ["stage", "year", "month", "approved", "filled", "junior", "senior", "male", "female", "received"].includes(el.dataset.k)) {
         v = v === "" ? null : Number(v);
       }
       payload[el.dataset.k] = v;
@@ -1271,7 +1324,7 @@ ${editBtn}
     "التحديثات": "Updates", "إضافة تحديث": "Add update", "يدوي": "Manual", "تلقائي": "Automatic",
     "تحديثات تمهير": "Tamheer updates", "تظهر في الملخص التنفيذي": "Appears in the executive summary",
     "لا توجد تحديثات بعد": "No updates yet", "نص التحديث": "Update text", "يخصّ": "Relates to",
-    "محتوى التقرير": "Report content", "جميعها": "All sections",
+    "محتوى التقرير": "Report content", "الكل": "All",
     "تصدير التقرير PDF حسب المحتوى المختار": "Export PDF for the selected content",
     "حالة طلبات المقابلات": "Interview requests status",
     "نسبة إنجاز طلبات المقابلات": "Interview requests completion",
@@ -1436,6 +1489,7 @@ ${editBtn}
         render(); toast("تم تحديث المستهدف");
       } catch (e) { alert("تعذّر الحفظ: " + e.message); }
     },
+    toggleNode(id) { state.openNodes[id] = !state.openNodes[id]; render(); },
     goNode(id) { state.node = id; state.filters.unit = id === "root" ? "" : id; render(); },
     setFilter(k, v) {
       state.filters[k] = k === "unit" ? v : Number(v);
