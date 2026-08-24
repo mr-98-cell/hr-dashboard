@@ -798,97 +798,90 @@
      الجهة في المركز، وكل حلقة مستوى تنظيمي. سعة القوس بحجم الوظائف
      المعتمدة، وامتلاؤه من الداخل للخارج بنسبة الإشغال — فتُقرأ الفجوات
      من الشكل قبل الأرقام. الضغط على قوس يجعله المركز. */
-  function arcPath(cx, cy, r0, r1, a0, a1) {
-    const P = (r, a) => [(cx + r * Math.cos(a)).toFixed(2), (cy + r * Math.sin(a)).toFixed(2)];
-    const big = a1 - a0 > Math.PI ? 1 : 0;
-    const [x0, y0] = P(r1, a0), [x1, y1] = P(r1, a1), [x2, y2] = P(r0, a1), [x3, y3] = P(r0, a0);
-    return `M ${x0} ${y0} A ${r1} ${r1} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${r0} ${r0} 0 ${big} 0 ${x3} ${y3} Z`;
+  /* ---------------- الهيكل: مخطط مساحي (Treemap) ----------------
+     مساحة كل مستطيل بحجم وظائف الوحدة، ولونه بحالة إشغالها، واسمها
+     ورقمها مكتوبان بداخله. خوارزمية squarified تُبقي النسب قريبة من
+     المربع فتظل النصوص مقروءة. */
+  function squarify(items, W, H) {
+    const out = [];
+    const total = items.reduce((s, n) => s + n.value, 0) || 1;
+    const scale = (W * H) / total;
+    let nodes = items.slice(), row = [];
+    let x = 0, y = 0, w = W, h = H;
+
+    const worst = (r, len) => {
+      if (!r.length || !len) return Infinity;
+      const ar = r.map((n) => n.value * scale);
+      const s = ar.reduce((a, b) => a + b, 0);
+      const mx = Math.max.apply(null, ar), mn = Math.min.apply(null, ar);
+      return Math.max((len * len * mx) / (s * s), (s * s) / (len * len * mn));
+    };
+    const flush = () => {
+      const area = row.reduce((s, n) => s + n.value * scale, 0);
+      if (w >= h) {
+        const cw = h ? area / h : 0;
+        let cy = y;
+        row.forEach((n) => {
+          const ch = cw ? (n.value * scale) / cw : 0;
+          out.push({ n: n, x: x, y: cy, w: cw, h: ch }); cy += ch;
+        });
+        x += cw; w -= cw;
+      } else {
+        const rh = w ? area / w : 0;
+        let cx = x;
+        row.forEach((n) => {
+          const cw2 = rh ? (n.value * scale) / rh : 0;
+          out.push({ n: n, x: cx, y: y, w: cw2, h: rh }); cx += cw2;
+        });
+        y += rh; h -= rh;
+      }
+      row = [];
+    };
+
+    while (nodes.length) {
+      const len = Math.min(w, h);
+      const next = row.concat([nodes[0]]);
+      if (!row.length || worst(row, len) >= worst(next, len)) { row = next; nodes.shift(); }
+      else flush();
+    }
+    if (row.length) flush();
+    return out;
   }
 
   function sectorsBody() {
     const focus = state.orgFocus && unitById(state.orgFocus) ? state.orgFocus : null;
     const a = focus ? aggregate(focus) : aggregateAll();
     const kids = focus ? childrenOf(focus) : roots();
-    const focusName = focus ? uname(unitById(focus)) : t("الجهة كاملة");
+    const occ = pct(a.filled, a.approved);
 
-    const CX = 250, CY = 250, HOLE = 88, RINGS = [58, 44, 32];
-    const segs = [];
-    (function layout(id, a0, a1, depth) {
-      if (depth >= RINGS.length) return;
-      const ch = id ? childrenOf(id) : (focus ? childrenOf(focus) : roots());
-      if (!ch.length) return;
-      // الوزن بالوظائف المعتمدة، وبحد أدنى ١ حتى لا تختفي وحدة بلا أرقام
-      const tot = ch.reduce((s, k) => s + Math.max(1, aggregate(k.id).approved), 0);
-      let cur = a0;
-      ch.forEach((k, i) => {
-        const st = aggregate(k.id);
-        const w = (Math.max(1, st.approved) / tot) * (a1 - a0);
-        segs.push({ u: k, a0: cur, a1: cur + w, d: depth, st: st,
-          col: depth === 0 ? ORG_COLORS[i % ORG_COLORS.length] : null });
-        layout(k.id, cur, cur + w, depth + 1);
-        cur += w;
-      });
-    })(focus, -Math.PI / 2, Math.PI * 1.5, 0);
+    // الوزن بالوظائف المعتمدة، وبحد أدنى ١ حتى لا تختفي وحدة بلا أرقام
+    const items = kids.map((k) => ({ u: k, st: aggregate(k.id), value: Math.max(1, aggregate(k.id).approved) }))
+      .sort((p, q) => q.value - p.value);
+    const cells = squarify(items, 100, 100);
 
-    // لون الأبناء موروث من القطاع الجذر لتُقرأ التبعية بالنظر
-    const colorOf = (seg) => {
-      if (seg.col) return seg.col;
-      let p = seg.u.parent_id, guard = 0;
-      while (p && guard++ < 10) {
-        const top = segs.find((x) => x.u.id === p);
-        if (top && top.col) return top.col;
-        p = (unitById(p) || {}).parent_id;
-      }
-      return "var(--g-500)";
-    };
-
-    const paths = segs.map((s) => {
-      const r0 = HOLE + RINGS.slice(0, s.d).reduce((x, y) => x + y, 0);
-      const r1 = r0 + RINGS[s.d];
-      const p = pct(s.st.filled, s.st.approved);
-      const rf = r0 + (r1 - r0) * (p / 100);          // الامتلاء = نسبة الإشغال
-      const c = colorOf(s);
-      const hasKids = childrenOf(s.u.id).length > 0;
-      const title = `${uname(s.u)} — ${esc(t("إشغال"))} ${p}٪ · ${s.st.filled} ${t("من")} ${s.st.approved}`;
-      return `<g class="sbseg${hasKids ? " deep" : ""}" onclick="APP.focusOrg('${jsq(hasKids ? s.u.id : s.u.parent_id || "")}')">
-        <title>${esc(title)}</title>
-        <path d="${arcPath(CX, CY, r0, r1, s.a0, s.a1)}" fill="${c}" opacity=".13"/>
-        <path d="${arcPath(CX, CY, r0, rf, s.a0, s.a1)}" fill="${c}" opacity="${[1, .74, .52][s.d]}"/>
-        <path class="hit" d="${arcPath(CX, CY, r0, r1, s.a0, s.a1)}" fill="transparent"/></g>`;
+    const tone = (p) => (p >= 100 ? "full" : p >= 95 ? "ok" : p >= 90 ? "mid" : "low");
+    const boxes = cells.map(({ n, x, y, w, h }) => {
+      const p = pct(n.st.filled, n.st.approved);
+      const sub = childrenOf(n.u.id).length;
+      const small = w < 15 || h < 15;          // مستطيل ضيق: نُخفي التفاصيل ونُبقي الاسم
+      const tiny = w < 7 || h < 7;             // أصغر من أن يحمل نصًا
+      const edit = canEdit() && !small
+        ? `<span class="iact" onclick="event.stopPropagation();APP.openForm('unit','${jsq(n.u.id)}')">${icon("pen")}</span>` : "";
+      return `<div class="tmcell ${tone(p)}${sub ? " deep" : ""}"
+        style="inset-inline-start:${x.toFixed(3)}%;top:${y.toFixed(3)}%;width:${w.toFixed(3)}%;height:${h.toFixed(3)}%"
+        title="${esc(uname(n.u))} — ${esc(t("إشغال"))} ${p}٪ · ${n.st.filled} ${esc(t("من"))} ${n.st.approved} · ${esc(t("شاغر"))} ${n.st.vacant}"
+        onclick="APP.focusOrg('${jsq(sub ? n.u.id : focus || "")}')">
+        ${tiny ? "" : `<div class="tm-h"><span class="tm-n">${esc(uname(n.u))}</span>${edit}</div>
+        ${small ? "" : `<div class="tm-v"><b>${n.st.filled}</b><span>${esc(t("من"))} ${n.st.approved}</span></div>
+        <div class="tm-f">${p}٪ · ${n.st.vacant ? `${esc(t("شاغر"))} ${n.st.vacant}` : esc(t("مكتملة"))}${sub ? ` · ${sub} ${esc(t("وحدات"))} ›` : ""}</div>`}`}
+      </div>`;
     }).join("");
 
-    const occ = pct(a.filled, a.approved);
-    const wheel = `<svg viewBox="0 0 500 500" class="sunburst">
-      <circle cx="${CX}" cy="${CY}" r="${HOLE - 6}" fill="var(--g-50)" stroke="var(--line)"/>
-      ${paths}
-      <text x="${CX}" y="${CY - 16}" text-anchor="middle" class="sb-pct">${occ}٪</text>
-      <text x="${CX}" y="${CY + 6}" text-anchor="middle" class="sb-lbl">${esc(t("إشغال"))}</text>
-      <text x="${CX}" y="${CY + 30}" text-anchor="middle" class="sb-sub">${a.filled} ${esc(t("من"))} ${a.approved}</text>
-    </svg>`;
-
-    // مسار الرجوع
     const path = focus ? pathOf(focus) : [];
     const crumbs = `<div class="sbcrumbs">
       <a class="${focus ? "" : "cur"}" onclick="APP.focusOrg('')">${esc(t("الجهة كاملة"))}</a>
-      ${path.map((x, i) => `<span class="sep">›</span><a class="${i === path.length - 1 ? "cur" : ""}"
-        onclick="APP.focusOrg('${jsq(x)}')">${esc(uname(unitById(x)))}</a>`).join("")}</div>`;
-
-    // قائمة مرافقة بالأرقام الدقيقة — الشكل للنظرة والقائمة للقراءة
-    const list = kids.map((k, i) => {
-      const s2 = aggregate(k.id);
-      const p = pct(s2.filled, s2.approved);
-      const sub = childrenOf(k.id).length;
-      const edit = canEdit()
-        ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="event.stopPropagation();APP.openForm('unit','${jsq(k.id)}')">${icon("pen")}</span>` : "";
-      return `<div class="sbrow" onclick="APP.focusOrg('${jsq(sub ? k.id : focus || "")}')">
-        <span class="dot" style="background:${ORG_COLORS[i % ORG_COLORS.length]}"></span>
-        <span class="nm">${esc(uname(k))}</span>
-        <span class="num"><b>${s2.filled}</b> ${esc(t("من"))} ${s2.approved}</span>
-        <span class="pc">${p}٪</span>
-        <span class="vc">${s2.vacant ? `${esc(t("شاغر"))} ${s2.vacant}` : "—"}</span>
-        ${sub ? `<span class="go">${sub} ${esc(t("وحدات"))} ›</span>` : `<span class="go dim">—</span>`}
-        ${edit}</div>`;
-    }).join("");
+      ${path.map((v, i) => `<span class="sep">›</span><a class="${i === path.length - 1 ? "cur" : ""}"
+        onclick="APP.focusOrg('${jsq(v)}')">${esc(uname(unitById(v)))}</a>`).join("")}</div>`;
 
     const chips = `<div class="dchips">
       <div class="dchip">${esc(t("الوظائف المعتمدة"))}<b>${a.approved}</b></div>
@@ -898,13 +891,17 @@
 
     const tools = canEdit() ? `<button class="btn btn-p sm" onclick="APP.openForm('unit')">${icon("plus")} ${esc(t("إضافة إدارة / قسم"))}</button>` : "";
 
+    const legend = `<div class="tmlegend">
+      <span><i class="full"></i>${esc(t("مكتملة"))}</span>
+      <span><i class="ok"></i>٩٥–٩٩٪</span>
+      <span><i class="mid"></i>٩٠–٩٤٪</span>
+      <span><i class="low"></i>${esc(t("أقل من"))} ٩٠٪</span>
+      <span class="note">${esc(t("مساحة المستطيل بحجم وظائف الوحدة · اضغط للتعمّق"))}</span></div>`;
+
     return `<div class="sbwrap">
       <div class="sbhead">${crumbs}<div class="hact">${chips}${tools}</div></div>
-      <div class="sbgrid">
-        <div class="sbchart">${wheel}
-          <div class="sbhint">${esc(t("اضغط أي قوس للتعمّق · المركز يعرض الوحدة الحالية"))}</div></div>
-        <div class="sblist">${list || `<div class="empty">${esc(t("وحدة تنظيمية نهائية"))}</div>`}</div>
-      </div></div>`;
+      ${kids.length ? `<div class="tmap">${boxes}</div>${legend}`
+        : `<div class="empty">${esc(t("وحدة تنظيمية نهائية"))}</div>`}</div>`;
   }
 
   /* الصفحة المستقلة تبقى للروابط القديمة (#/sectors) بعد دمج التبويب في التوظيف */
