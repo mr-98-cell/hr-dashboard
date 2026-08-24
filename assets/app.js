@@ -363,12 +363,6 @@
   function pageExec() {
     const { y, m } = refMonth();
     const pm = prevMonth(y, m);
-    const monthName = MONTHS_FULL[m - 1];
-
-    /* ١) الإنجازات = المنضمون − الاستقالات في الشهر نفسه */
-    const net = (yy, mm) => inMonth("onboarding", yy, mm).length - inMonth("resignations", yy, mm).length;
-    const netNow = net(y, m), netPrev = net(pm.y, pm.m);
-    const joins = inMonth("onboarding", y, m).length, exits = inMonth("resignations", y, m).length;
 
     /* ٢) الشواغر المفتوحة — حالة قائمة، فتتبع الفلتر لا الشهر المرجعي */
     const vacNow = rows("jobs").filter((j) => Number(j.stage) < JOINED).length;
@@ -385,11 +379,10 @@
     const tmOn = rows("tamheer").filter((r) => Number(r.stage) === TR_JOINED).length;
 
     const kpis = `<div class="kstrip">
-      ${kpiTile("الإنجازات هذا الشهر", (netNow >= 0 ? "+" : "") + netNow, netNow - netPrev,
-        `${joins} ${t("تعيينات")} · ${exits} ${t("استقالات")} · ${monthName}`, true)}
+      ${kpiTile("نسبة الإشغال", occ + "٪", null,
+        `${agg.filled} ${t("مشغولة")} · ${agg.vacant} ${t("شاغرة")} ${t("من")} ${agg.approved} ${t("وظيفة معتمدة")}`, true)}
       ${kpiTile("الشواغر المفتوحة", vacNow, vacPrev === null ? null : vacNow - vacPrev,
         vacPrev === null ? t("ضمن الفترة المختارة") : t("مقارنة بالشهر السابق"))}
-      ${kpiTile("نسبة الإشغال", occ + "٪", null, `${agg.filled} ${t("من")} ${agg.approved} ${t("وظيفة معتمدة")}`)}
       ${kpiTile("مرشحون تحت الإجراء", pipeline, null, t("في المراحل الست"))}
       ${kpiTile("متدربون قائمون", trOn + tmOn, null, `${trOn} ${t("تدريب")} · ${tmOn} ${t("تمهير")}`)}
     </div>`;
