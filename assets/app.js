@@ -227,6 +227,8 @@
   /* شريط حالات قابل للضغط — يعرض من هم في كل حالة */
   // ترتيب شجرة القطاعات داخل «نظرة عامة»: true = فوق الرسوم
   const ORG_FIRST = false;
+  // تصميم شجرة الهيكل: "lines" خطوط رابطة · "cards" بطاقات متداخلة
+  const TREE_STYLE = "lines";
 
   const STATUS_ICON = {
     "": "stack",
@@ -778,26 +780,46 @@
         const isOpen = !!state.openNodes[u.id];
         const edit = canEdit()
           ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="event.stopPropagation();APP.openForm('unit','${jsq(u.id)}')">${icon("pen")}</span>` : "";
-        const caret = kids.length
-          ? `<span class="tw${isOpen ? " open" : ""}">${CHEV}</span>`
-          : `<span class="tw empty"></span>`;
         const p = pct(s.filled, s.approved);
-        const row = `<div class="trow${isOpen ? " on" : ""}" style="padding-inline-start:${depth * 22}px"
-            onclick="APP.toggleNode('${jsq(u.id)}')">
+        const tone = p >= 95 ? "ok" : p >= 85 ? "mid" : "low";
+        const caret = kids.length ? `<span class="tw${isOpen ? " open" : ""}">${CHEV}</span>` : `<span class="tw empty"></span>`;
+
+        if (TREE_STYLE === "cards") {
+          /* (ب) بطاقات متداخلة — الأبناء داخل حاوية الأب فيظهر الاحتواء بصريًا */
+          const head = `<div class="ncard-h" onclick="APP.toggleNode('${jsq(u.id)}')">
+            ${caret}
+            <div class="ncard-id"><div class="ncard-n">${esc(uname(u))}</div>
+              <div class="ncard-s">${kids.length ? `${kids.length} ${esc(t("وحدة تابعة"))}` : esc(t("وحدة تنظيمية نهائية"))}</div></div>
+            <div class="ncard-m">
+              <div class="nm-b"><b>${s.filled}</b><span>${esc(t("مشغولة"))}</span></div>
+              <div class="nm-b"><b>${s.vacant}</b><span>${esc(t("شاغرة"))}</span></div>
+              <div class="nm-b"><b>${s.approved}</b><span>${esc(t("معتمدة"))}</span></div>
+            </div>
+            <div class="ncard-p ${tone}"><span>${p}٪</span><i style="width:${p}%"></i></div>
+            ${edit}</div>`;
+          return `<div class="ncard ${tone}${isOpen ? " open" : ""}">${head}
+            ${isOpen && kids.length ? `<div class="ncard-kids">${branch(kids, depth + 1)}</div>` : ""}</div>`;
+        }
+
+        /* (أ) شجرة بخطوط رابطة — أقرب إلى الهيكل التنظيمي المرسوم */
+        const row = `<div class="trow ${tone}${isOpen ? " on" : ""}" onclick="APP.toggleNode('${jsq(u.id)}')">
           ${caret}
+          <span class="tdot"></span>
           <span class="tn">${esc(uname(u))}</span>
+          <span class="tsub">${kids.length ? `${kids.length} ${esc(t("وحدة"))}` : ""}</span>
           <span class="tbar"><i style="width:${p}%"></i></span>
-          <span class="tv"><b>${s.filled}</b> ${esc(t("من"))} ${s.approved}</span>
           <span class="tp">${p}٪</span>
-          <span class="tvac">${esc(t("شاغر"))} ${s.vacant}</span>
+          <span class="tv"><b>${s.filled}</b> ${esc(t("من"))} ${s.approved}</span>
+          <span class="tvac">${s.vacant ? `${esc(t("شاغر"))} ${s.vacant}` : "—"}</span>
           ${edit}</div>`;
-        return row + (isOpen && kids.length ? `<div class="tkids">${branch(kids, depth + 1)}</div>` : "");
+        return `<div class="tnode">${row}
+          ${isOpen && kids.length ? `<div class="tkids">${branch(kids, depth + 1)}</div>` : ""}</div>`;
       }).join("");
     }
 
     const scope = state.filters.unit ? childrenOf(state.filters.unit) : roots();
     const tree = scope.length
-      ? `<div class="tree">${branch(scope, 0)}</div>`
+      ? `<div class="tree ${TREE_STYLE}">${branch(scope, 0)}</div>`
       : `<div class="empty">${esc(t("وحدة تنظيمية نهائية"))}</div>`;
 
     const unitTools = canEdit() ? `<div class="utools">

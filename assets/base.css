@@ -352,26 +352,65 @@ body.edit .editbar{display:flex}
 .orgblock{margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
 .orgblock:first-child{margin-top:0;padding-top:0;border-top:0;margin-bottom:22px;padding-bottom:20px;border-bottom:1px solid var(--line)}
 
-/* ---- شجرة الهيكل القابلة للطي ---- */
-.tree{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel)}
-.trow{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);
-  cursor:pointer;transition:.13s;font-size:13px}
-.trow:last-child{border-bottom:0}
+/* ---- (أ) شجرة بخطوط رابطة ---- */
+.tree.lines{border:1px solid var(--line);border-radius:18px;padding:8px 10px;background:var(--panel)}
+.tree.lines .tnode{position:relative}
+.tree.lines .tkids{position:relative;margin-inline-start:20px;padding-inline-start:18px}
+/* الخط الرأسي الواصل بين الأبناء */
+.tree.lines .tkids::before{content:"";position:absolute;inset-inline-start:0;top:-6px;bottom:16px;
+  width:2px;background:var(--g-100);border-radius:2px}
+/* الخط الأفقي من الجذع إلى كل ابن */
+.tree.lines .tkids>.tnode>.trow::before{content:"";position:absolute;inset-inline-start:-18px;top:50%;
+  width:16px;height:2px;background:var(--g-100)}
+.trow{position:relative;display:flex;align-items:center;gap:11px;padding:11px 13px;border-radius:12px;
+  cursor:pointer;transition:.14s;font-size:13px;margin:3px 0}
 .trow:hover{background:var(--g-50)}
 .trow.on{background:var(--g-50)}
-.trow .tw{flex:0 0 16px;display:inline-flex;justify-content:center;color:var(--muted);transition:transform .15s}
-.trow .tw svg{width:15px;height:15px}
+.trow .tw{flex:0 0 15px;display:inline-flex;justify-content:center;color:var(--muted);transition:transform .16s}
+.trow .tw svg{width:14px;height:14px}
 .trow .tw.open{transform:rotate(180deg);color:var(--g-700)}
 .trow .tw.empty{opacity:0}
+.trow .tdot{flex:0 0 9px;height:9px;border-radius:50%;background:var(--g-400)}
+.trow.ok .tdot{background:var(--emerald)}.trow.mid .tdot{background:var(--g-600)}.trow.low .tdot{background:var(--gold)}
 .trow .tn{flex:1 1 auto;min-width:0;font-weight:700;color:var(--g-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.trow .tbar{flex:0 0 110px;height:7px;border-radius:5px;background:var(--g-100);overflow:hidden}
-.trow .tbar i{display:block;height:100%;background:var(--g-700);border-radius:5px}
-.trow .tv{flex:0 0 84px;text-align:center;color:var(--ink-2);font-size:12px}
+.trow .tsub{flex:0 0 auto;font-size:11px;color:var(--muted)}
+.trow .tbar{flex:0 0 96px;height:6px;border-radius:4px;background:var(--g-100);overflow:hidden}
+.trow .tbar i{display:block;height:100%;border-radius:4px;background:var(--g-700)}
+.trow.ok .tbar i{background:var(--emerald)}.trow.low .tbar i{background:var(--gold)}
+.trow .tp{flex:0 0 42px;text-align:center;font-size:12px;font-weight:700;color:var(--g-700)}
+.trow .tv{flex:0 0 86px;text-align:center;color:var(--ink-2);font-size:12px}
 .trow .tv b{font-family:"Noto Kufi Arabic";color:var(--g-800)}
-.trow .tp{flex:0 0 44px;text-align:center;font-size:12px;color:var(--g-700);font-weight:700}
-.trow .tvac{flex:0 0 74px;text-align:center;font-size:11.5px;color:var(--muted)}
-.tkids{background:var(--soft)}
-@media(max-width:760px){.trow .tbar,.trow .tvac{display:none}}
+.trow .tvac{flex:0 0 70px;text-align:center;font-size:11.5px;color:var(--muted)}
+@media(max-width:900px){.trow .tbar,.trow .tvac,.trow .tsub{display:none}}
+
+/* ---- (ب) بطاقات متداخلة ---- */
+.tree.cards{display:flex;flex-direction:column;gap:10px}
+.ncard{border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden;transition:.15s}
+.ncard:hover{border-color:var(--g-400)}
+.ncard.open{box-shadow:0 6px 20px rgba(0,40,34,.07)}
+.ncard-h{display:flex;align-items:center;gap:13px;padding:14px 16px;cursor:pointer;
+  border-inline-start:4px solid var(--g-400)}
+.ncard.ok>.ncard-h{border-inline-start-color:var(--emerald)}
+.ncard.mid>.ncard-h{border-inline-start-color:var(--g-600)}
+.ncard.low>.ncard-h{border-inline-start-color:var(--gold)}
+.ncard-h .tw{flex:0 0 15px;display:inline-flex;color:var(--muted);transition:transform .16s}
+.ncard-h .tw svg{width:14px;height:14px}
+.ncard-h .tw.open{transform:rotate(180deg);color:var(--g-700)}
+.ncard-h .tw.empty{opacity:0}
+.ncard-id{flex:1 1 auto;min-width:0}
+.ncard-n{font-weight:700;font-size:13.5px;color:var(--g-900);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ncard-s{font-size:11px;color:var(--muted);margin-top:3px}
+.ncard-m{display:flex;gap:8px;flex:0 0 auto}
+.nm-b{background:var(--g-50);border:1px solid var(--line);border-radius:10px;padding:6px 11px;text-align:center;min-width:62px}
+.nm-b b{display:block;font-family:"Noto Kufi Arabic";font-size:14px;color:var(--g-800);line-height:1.1}
+.nm-b span{font-size:10px;color:var(--muted)}
+.ncard-p{flex:0 0 82px;position:relative;height:26px;border-radius:8px;background:var(--g-100);overflow:hidden;
+  display:flex;align-items:center;justify-content:center}
+.ncard-p span{position:relative;z-index:2;font-size:12px;font-weight:800;color:var(--g-900)}
+.ncard-p i{position:absolute;inset-inline-start:0;top:0;bottom:0;background:var(--g-400);opacity:.55}
+.ncard-p.ok i{background:var(--emerald)}.ncard-p.low i{background:var(--gold)}
+.ncard-kids{padding:4px 14px 14px 14px;background:var(--soft);display:flex;flex-direction:column;gap:8px}
+@media(max-width:900px){.ncard-m{display:none}}
 
 /* ---- بطاقة الوظيفة ---- */
 .jcode{font-size:11px;color:var(--muted);font-family:ui-monospace,monospace}
