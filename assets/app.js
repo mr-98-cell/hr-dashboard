@@ -29,6 +29,8 @@
   const TR_JOINED = 2;   // من بلغ «الانضمام» فما بعده باشر التدريب فعلًا
   const RS_STAGES = ["الإشعار", "منتهي"];                          // الاستقالات
   const PALETTE = ["var(--g-800)", "var(--emerald)", "var(--g-700)", "var(--g-600)", "var(--g-500)", "var(--gold)", "var(--g-400)"];
+  // ألوان الحلقة الجذرية في المخطط الشعاعي — ثمانية متمايزة ضمن الهوية
+  const ORG_COLORS = ["#00584c", "#00b288", "#016b5f", "#e0a200", "#008b84", "#3ba295", "#0e7c9b", "#5aaba2"];
 
   const state = {
     page: "index",
@@ -41,6 +43,7 @@
     scope: "all",  // محتوى تقرير PDF: الكل أو قسم بعينه
     openNodes: {}, // فروع الشجرة المفتوحة في تبويب القطاعات
     onbUnit: "",   // الإدارة المختارة في تبويب الانضمام
+    orgFocus: "",  // الوحدة في مركز المخطط الشعاعي
     stage: null,   // مرحلة التوظيف المختارة من شريط المراحل
     status: {},    // الحالة المختارة لكل جدول (المتدربون/تمهير)
     edit: false,
@@ -791,55 +794,117 @@
   }
 
   // القطاعات
+  /* ---------------- الهيكل: مخطط شعاعي (Sunburst) ----------------
+     الجهة في المركز، وكل حلقة مستوى تنظيمي. سعة القوس بحجم الوظائف
+     المعتمدة، وامتلاؤه من الداخل للخارج بنسبة الإشغال — فتُقرأ الفجوات
+     من الشكل قبل الأرقام. الضغط على قوس يجعله المركز. */
+  function arcPath(cx, cy, r0, r1, a0, a1) {
+    const P = (r, a) => [(cx + r * Math.cos(a)).toFixed(2), (cy + r * Math.sin(a)).toFixed(2)];
+    const big = a1 - a0 > Math.PI ? 1 : 0;
+    const [x0, y0] = P(r1, a0), [x1, y1] = P(r1, a1), [x2, y2] = P(r0, a1), [x3, y3] = P(r0, a0);
+    return `M ${x0} ${y0} A ${r1} ${r1} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${r0} ${r0} 0 ${big} 0 ${x3} ${y3} Z`;
+  }
+
   function sectorsBody() {
-    const a = state.filters.unit ? aggregate(state.filters.unit) : aggregateAll();
+    const focus = state.orgFocus && unitById(state.orgFocus) ? state.orgFocus : null;
+    const a = focus ? aggregate(focus) : aggregateAll();
+    const kids = focus ? childrenOf(focus) : roots();
+    const focusName = focus ? uname(unitById(focus)) : t("الجهة كاملة");
+
+    const CX = 250, CY = 250, HOLE = 88, RINGS = [58, 44, 32];
+    const segs = [];
+    (function layout(id, a0, a1, depth) {
+      if (depth >= RINGS.length) return;
+      const ch = id ? childrenOf(id) : (focus ? childrenOf(focus) : roots());
+      if (!ch.length) return;
+      // الوزن بالوظائف المعتمدة، وبحد أدنى ١ حتى لا تختفي وحدة بلا أرقام
+      const tot = ch.reduce((s, k) => s + Math.max(1, aggregate(k.id).approved), 0);
+      let cur = a0;
+      ch.forEach((k, i) => {
+        const st = aggregate(k.id);
+        const w = (Math.max(1, st.approved) / tot) * (a1 - a0);
+        segs.push({ u: k, a0: cur, a1: cur + w, d: depth, st: st,
+          col: depth === 0 ? ORG_COLORS[i % ORG_COLORS.length] : null });
+        layout(k.id, cur, cur + w, depth + 1);
+        cur += w;
+      });
+    })(focus, -Math.PI / 2, Math.PI * 1.5, 0);
+
+    // لون الأبناء موروث من القطاع الجذر لتُقرأ التبعية بالنظر
+    const colorOf = (seg) => {
+      if (seg.col) return seg.col;
+      let p = seg.u.parent_id, guard = 0;
+      while (p && guard++ < 10) {
+        const top = segs.find((x) => x.u.id === p);
+        if (top && top.col) return top.col;
+        p = (unitById(p) || {}).parent_id;
+      }
+      return "var(--g-500)";
+    };
+
+    const paths = segs.map((s) => {
+      const r0 = HOLE + RINGS.slice(0, s.d).reduce((x, y) => x + y, 0);
+      const r1 = r0 + RINGS[s.d];
+      const p = pct(s.st.filled, s.st.approved);
+      const rf = r0 + (r1 - r0) * (p / 100);          // الامتلاء = نسبة الإشغال
+      const c = colorOf(s);
+      const hasKids = childrenOf(s.u.id).length > 0;
+      const title = `${uname(s.u)} — ${esc(t("إشغال"))} ${p}٪ · ${s.st.filled} ${t("من")} ${s.st.approved}`;
+      return `<g class="sbseg${hasKids ? " deep" : ""}" onclick="APP.focusOrg('${jsq(hasKids ? s.u.id : s.u.parent_id || "")}')">
+        <title>${esc(title)}</title>
+        <path d="${arcPath(CX, CY, r0, r1, s.a0, s.a1)}" fill="${c}" opacity=".13"/>
+        <path d="${arcPath(CX, CY, r0, rf, s.a0, s.a1)}" fill="${c}" opacity="${[1, .74, .52][s.d]}"/>
+        <path class="hit" d="${arcPath(CX, CY, r0, r1, s.a0, s.a1)}" fill="transparent"/></g>`;
+    }).join("");
+
+    const occ = pct(a.filled, a.approved);
+    const wheel = `<svg viewBox="0 0 500 500" class="sunburst">
+      <circle cx="${CX}" cy="${CY}" r="${HOLE - 6}" fill="var(--g-50)" stroke="var(--line)"/>
+      ${paths}
+      <text x="${CX}" y="${CY - 16}" text-anchor="middle" class="sb-pct">${occ}٪</text>
+      <text x="${CX}" y="${CY + 6}" text-anchor="middle" class="sb-lbl">${esc(t("إشغال"))}</text>
+      <text x="${CX}" y="${CY + 30}" text-anchor="middle" class="sb-sub">${a.filled} ${esc(t("من"))} ${a.approved}</text>
+    </svg>`;
+
+    // مسار الرجوع
+    const path = focus ? pathOf(focus) : [];
+    const crumbs = `<div class="sbcrumbs">
+      <a class="${focus ? "" : "cur"}" onclick="APP.focusOrg('')">${esc(t("الجهة كاملة"))}</a>
+      ${path.map((x, i) => `<span class="sep">›</span><a class="${i === path.length - 1 ? "cur" : ""}"
+        onclick="APP.focusOrg('${jsq(x)}')">${esc(uname(unitById(x)))}</a>`).join("")}</div>`;
+
+    // قائمة مرافقة بالأرقام الدقيقة — الشكل للنظرة والقائمة للقراءة
+    const list = kids.map((k, i) => {
+      const s2 = aggregate(k.id);
+      const p = pct(s2.filled, s2.approved);
+      const sub = childrenOf(k.id).length;
+      const edit = canEdit()
+        ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="event.stopPropagation();APP.openForm('unit','${jsq(k.id)}')">${icon("pen")}</span>` : "";
+      return `<div class="sbrow" onclick="APP.focusOrg('${jsq(sub ? k.id : focus || "")}')">
+        <span class="dot" style="background:${ORG_COLORS[i % ORG_COLORS.length]}"></span>
+        <span class="nm">${esc(uname(k))}</span>
+        <span class="num"><b>${s2.filled}</b> ${esc(t("من"))} ${s2.approved}</span>
+        <span class="pc">${p}٪</span>
+        <span class="vc">${s2.vacant ? `${esc(t("شاغر"))} ${s2.vacant}` : "—"}</span>
+        ${sub ? `<span class="go">${sub} ${esc(t("وحدات"))} ›</span>` : `<span class="go dim">—</span>`}
+        ${edit}</div>`;
+    }).join("");
 
     const chips = `<div class="dchips">
       <div class="dchip">${esc(t("الوظائف المعتمدة"))}<b>${a.approved}</b></div>
       <div class="dchip">${esc(t("المشغولة"))}<b>${a.filled}</b></div>
       <div class="dchip">${esc(t("الشاغرة"))}<b>${a.vacant}</b></div>
-      <div class="dchip hot">${esc(t("نسبة الإشغال"))}<b>${pct(a.filled, a.approved)}٪</b></div></div>`;
+      <div class="dchip hot">${esc(t("نسبة الإشغال"))}<b>${occ}٪</b></div></div>`;
 
-    const charts = `<div class="d3">
-      <div class="dbox"><div class="bt ttl-edit" data-k="الشواغر">${esc(t("الشواغر"))}</div>${splitbar([["مشغولة", a.filled, "var(--g-700)"], ["شاغرة", a.vacant, "var(--g-400)"]])}</div>
-      <div class="dbox"><div class="bt ttl-edit" data-k="الجنس">${esc(t("الجنس"))}</div>${splitbar([["ذكور", a.male, "var(--g-600)"], ["إناث", a.female, "var(--gold)"]])}</div></div>`;
+    const tools = canEdit() ? `<button class="btn btn-p sm" onclick="APP.openForm('unit')">${icon("plus")} ${esc(t("إضافة إدارة / قسم"))}</button>` : "";
 
-    /* شجرة قابلة للطي: الضغط على إدارة يفتح تابعيها تحتها مباشرة
-       بدل الانتقال إلى مستوى جديد يبتلع الشاشة. */
-    function branch(list, depth) {
-      return list.map((u) => {
-        const s = aggregate(u.id);
-        const kids = childrenOf(u.id);
-        const isOpen = !!state.openNodes[u.id];
-        const p = pct(s.filled, s.approved);
-        const tone = p >= 95 ? "ok" : p >= 85 ? "mid" : "low";
-        const edit = canEdit()
-          ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="event.stopPropagation();APP.openForm('unit','${jsq(u.id)}')">${icon("pen")}</span>` : "";
-        const card = `<div class="ocard ${tone}${isOpen ? " on" : ""}" onclick="APP.toggleNode('${jsq(u.id)}')">
-          <div class="oc-h"><div class="oc-n">${esc(uname(u))}</div>${edit}</div>
-          <div class="oc-m"><span class="b">${s.filled}</span><span class="s">${esc(t("من"))} ${s.approved} ${esc(t("وظيفة معتمدة"))}</span></div>
-          <div class="oc-bar"><span style="width:${p}%"></span></div>
-          <div class="oc-f">${esc(t("إشغال"))} ${p}٪ · ${esc(t("شاغر"))} ${s.vacant}${
-            kids.length ? ` · <b>${kids.length} ${esc(t("وحدات"))}</b> ${isOpen ? "▴" : "▾"}` : ""}</div></div>`;
-        // العقدة المفتوحة تأخذ عرض الصف كاملًا لتظهر مربعات أبنائها تحتها
-        return `<div class="onode${isOpen && kids.length ? " open" : ""}">${card}
-          ${isOpen && kids.length ? `<div class="okids"><div class="ogrid">${branch(kids, depth + 1)}</div></div>` : ""}</div>`;
-      }).join("");
-    }
-
-    const scope = state.filters.unit ? childrenOf(state.filters.unit) : roots();
-    const tree = scope.length
-      ? `<div class="ogrid">${branch(scope, 0)}</div>`
-      : `<div class="empty">${esc(t("وحدة تنظيمية نهائية"))}</div>`;
-
-    const unitTools = canEdit() ? `<div class="utools">
-      <button class="btn btn-p" onclick="APP.openForm('unit')">${icon("plus")} ${esc(t("إضافة إدارة / قسم"))}</button>
-      </div>` : "";
-
-    return `<div class="dhead">${chips}</div>${unitTools}${charts}
-      <div style="margin-top:18px">
-        <div class="bt ttl-edit" style="font-size:13.5px;color:var(--g-900);margin:0 0 10px" data-k="الإدارات / الأقسام التابعة">${esc(t("الإدارات / الأقسام التابعة"))}</div>
-        ${tree}</div>`;
+    return `<div class="sbwrap">
+      <div class="sbhead">${crumbs}<div class="hact">${chips}${tools}</div></div>
+      <div class="sbgrid">
+        <div class="sbchart">${wheel}
+          <div class="sbhint">${esc(t("اضغط أي قوس للتعمّق · المركز يعرض الوحدة الحالية"))}</div></div>
+        <div class="sblist">${list || `<div class="empty">${esc(t("وحدة تنظيمية نهائية"))}</div>`}</div>
+      </div></div>`;
   }
 
   /* الصفحة المستقلة تبقى للروابط القديمة (#/sectors) بعد دمج التبويب في التوظيف */
@@ -1543,6 +1608,7 @@ ${editBtn}
         render(); toast("تم تحديث المستهدف");
       } catch (e) { alert("تعذّر الحفظ: " + e.message); }
     },
+    focusOrg(id) { state.orgFocus = id || ""; render(); },
     setOnbUnit(v) { state.onbUnit = v || ""; render(); },
     toggleNode(id) { state.openNodes[id] = !state.openNodes[id]; render(); },
     goNode(id) { state.node = id; state.filters.unit = id === "root" ? "" : id; render(); },
