@@ -443,7 +443,15 @@
     /* التعيينات مقابل الاستقالات — من بداية السنة */
     const lastM = (new Date().getFullYear() === y) ? new Date().getMonth() + 1 : 12;
     const ms = Array.from({ length: lastM }, (_, i) => i + 1);
-    const hires = ms.map((mm) => inMonth("onboarding", y, mm).length);
+    /* التعيين = وظيفة بلغت «الانضمام» + ما أُضيف يدويًا لجدول الانضمام.
+       شهر التعيين يؤخذ من تاريخ المباشرة إن وُجد، وإلا من فترة الوظيفة. */
+    const hiredJobsIn = (yy, mm) => (db().jobs || []).filter((j) => {
+      if (Number(j.stage) !== JOINED || !inUnit(j)) return false;
+      const d = String(j.start_date || "");
+      if (/^\d{4}-\d{2}/.test(d)) return Number(d.slice(0, 4)) === yy && Number(d.slice(5, 7)) === mm;
+      return Number(j.year) === yy && Number(j.month) === mm;
+    }).length;
+    const hires = ms.map((mm) => inMonth("onboarding", y, mm).length + hiredJobsIn(y, mm));
     const outs = ms.map((mm) => inMonth("resignations", y, mm).length);
     const totH = hires.reduce((a, b) => a + b, 0), totO = outs.reduce((a, b) => a + b, 0);
     const W = 620, H = 200, pad = 34, mx = Math.max(...hires, ...outs, 4);
