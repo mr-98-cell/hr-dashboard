@@ -440,6 +440,16 @@ body.edit .editbar{display:flex}
 .prow .pn.link{cursor:pointer;color:var(--g-800);text-decoration:underline;text-decoration-color:var(--g-100);
   text-underline-offset:3px;transition:.14s}
 .prow .pn.link:hover{color:var(--g-600);text-decoration-color:var(--g-400)}
+
+/* ---- صفحة الوظائف: شريط الفلاتر ومفتاح العرض ---- */
+.jfilters{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.jfilters .sp{flex:1}
+.vswitch{display:inline-flex;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:var(--soft)}
+.vswitch b{padding:9px 15px;font-size:12px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:.14s}
+.vswitch b:hover{color:var(--g-700)}
+.vswitch b.on{background:var(--g-800);color:#fff}
+.dtable td.mono{font-family:ui-monospace,monospace;font-size:11.5px;color:var(--muted);white-space:nowrap}
+.dtable .badge{font-size:10.5px;padding:3px 8px}
 /* ===== إضافات التطبيق فوق التصميم الأساسي ===== */
 
 .boot{color:#fff;text-align:center;padding:80px;font-family:"Noto Sans Arabic",sans-serif}
@@ -1222,6 +1232,8 @@ window.APP_CONFIG = {
     lang: "ar",
     occSort: "asc",  // ترتيب الإشغال: asc = الأدنى أولًا
     scope: "all",  // محتوى تقرير PDF: الكل أو قسم بعينه
+    jobType: "",   // فلتر نوع التوظيف في صفحة الوظائف
+    jobsView: "cards", // عرض الوظائف: بطاقات أو جدول
     openNodes: {}, // فروع الشجرة المفتوحة في تبويب القطاعات
     onbUnit: "",   // الإدارة المختارة في تبويب الانضمام
     orgFocus: "",  // الوحدة في مركز المخطط الشعاعي
@@ -1262,6 +1274,7 @@ window.APP_CONFIG = {
     done: '<circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.2 2.6 2.6L15.8 9.8"/>',
     reject: '<circle cx="12" cy="12" r="8.5"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6"/>',
     cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3.5V6.5M16 3.5V6.5"/>',
+    case: '<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M9 7.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5v2"/><path d="M3 12.5h18M10.5 12.5v2h3v-2"/>',
     bell: '<path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4 1.5 5.5 1.5 5.5h-14S6.5 14 6.5 10z"/><path d="M10.2 19a2 2 0 0 0 3.6 0"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>',
   };
@@ -1754,42 +1767,6 @@ window.APP_CONFIG = {
       + statusChips("interviews", ivs, ["مجدولة", "تمت", "مرفوضة"])
       + plist("جدول المقابلات", "", ivCards, ["إضافة مقابلة", "interview"]);
 
-    /* مراحل التوظيف — بطاقة لكل مرحلة، والوظيفة تتحرك بينها */
-    const atStage = (i) => jobs.filter((j) => Number(j.stage) === i);
-    const sum = STAGES.map((s, i) => `<div class="sum${state.stage === i ? " on" : ""}" onclick="APP.setStage(${i})" title="${esc(t("اعرض من في هذه المرحلة"))}">
-      <div class="n">${atStage(i).length}</div><div class="l">${esc(t(s))}</div></div>`).join("");
-
-    const shown = state.stage == null ? jobs : atStage(state.stage);
-    const accs = shown.map((j, i) => {
-      const steps = STAGES.map((s, si) => {
-        const cls = si < j.stage ? "done" : si === Number(j.stage) ? "cur" : "";
-        return `<div class="step ${cls}"><div class="c">${si < j.stage ? "✓" : si}</div><div class="t">${esc(t(s))}</div></div>`;
-      }).join("");
-      const upd = canEdit() ? `<button class="btn btn-g" onclick="APP.openForm('job','${jsq(j.id)}')">${icon("pen")} ${esc(t("تحديث المرحلة"))}</button>` : "";
-      const del = canEdit() ? `<button class="btn btn-x" onclick="APP.removeRow('jobs','${jsq(j.id)}')">${icon("trash")} ${esc(t("حذف"))}</button>` : "";
-      return `<div class="acc ${i === 0 ? "open" : ""}"><div class="head" onclick="this.parentElement.classList.toggle('open')">
-        <span class="nm">${esc(j.candidate || t("بلا مرشح بعد"))}</span><span class="pos">${esc(j.title)}</span>
-        <span class="jcode">${esc(j.code || "")}</span>
-        <span class="badge b-info">${esc(t(STAGES[j.stage] || ""))}</span><span class="chev">${CHEV}</span></div>
-        <div class="body"><div class="stepper">${steps}</div>
-        <div class="jmeta">
-          <div class="mi"><span class="k">${esc(t("الإدارة"))}</span><span class="v">${esc(uname(unitById(j.unit_id)))}</span></div>
-          <div class="mi"><span class="k">${esc(t("الدرجة الوظيفية"))}</span><span class="v">${esc(j.grade || "—")}</span></div>
-          <div class="mi"><span class="k">${esc(t("مدير الإدارة"))}</span><span class="v">${esc(j.manager || "—")}</span></div>
-          <div class="mi"><span class="k">${esc(t("نوع التوظيف"))}</span><span class="v">${esc(j.hire_type || "—")}</span></div>
-          <div class="mi"><span class="k">${esc(t("المتقدمون"))}</span><span class="v">${esc(String(j.received || 0))}</span></div>
-          <div class="mi"><span class="k">${esc(t("تاريخ المباشرة"))}</span><span class="v">${esc(j.start_date ? fmtDate(j.start_date) : "—")}</span></div>
-        </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
-        <div class="note" style="margin:0">${esc(t("آخر تحديث"))}: ${esc(j.note || "—")}</div>${upd}${del}</div></div></div>`;
-    }).join("");
-
-    const addJob = canEdit() ? `<div style="display:flex;margin-bottom:14px"><button class="btn btn-p" onclick="APP.openForm('job')">${icon("plus")} ${esc(t("إضافة وظيفة"))}</button></div>` : "";
-    const stageNote = state.stage == null ? "" :
-      `<div class="stagenote">${esc(t("تعرض الآن مرحلة"))} «${esc(t(STAGES[state.stage]))}» — ${atStage(state.stage).length}
-        <button class="btn btn-x" onclick="APP.setStage(${state.stage})">${esc(t("عرض كل المراحل"))}</button></div>`;
-    const flow = addJob + `<div class="sumrow" style="grid-template-columns:repeat(${STAGES.length},1fr)">${sum}</div>`
-      + stageNote + (accs || `<div class="empty">${esc(t("لا توجد وظائف في هذه المرحلة"))}</div>`);
 
     /* الانضمام — يُبنى من الوظائف التي بلغت المرحلة الأخيرة، ويقبل إضافة يدوية */
     const manual = rows("onboarding");
@@ -1846,8 +1823,8 @@ window.APP_CONFIG = {
 
     const orgBlock = `<div class="orgblock">${sectorsBody()}</div>`;
     const ovFull = ORG_FIRST ? orgBlock + ov : ov + orgBlock;
-    const views = [["ov", ovFull], ["iv", ivView], ["flow", flow], ["onb", onbView]];
-    const tabs = [["ov", "نظرة عامة"], ["iv", "المقابلات"], ["flow", "مراحل التوظيف"], ["onb", "الانضمام"]];
+    const views = [["ov", ovFull], ["iv", ivView], ["onb", onbView]];
+    const tabs = [["ov", "نظرة عامة"], ["iv", "المقابلات"], ["onb", "الانضمام"]];
 
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة إنجاز طلبات المقابلات">${esc(t("نسبة إنجاز طلبات المقابلات"))}</h3></div>
       <div class="hero">${ring(pct(ivDone, ivs.length), "var(--g-700)", "إنجاز المقابلات", `${ivDone} ${t("مكتملة من")} ${ivs.length} ${t("مقابلة")}`, 290)}
@@ -1873,6 +1850,104 @@ window.APP_CONFIG = {
   const byStage = (key, list) =>
     (state.status[key] === "" || state.status[key] == null ? list : list.filter((r) => Number(r.stage) === Number(state.status[key])));
   const stageBadge = (i, stages) => [stages[i] || "", i === stages.length - 1 ? "b-good" : i === 0 ? "b-warn" : "b-info"];
+
+  /* ---------------- الوظائف: سجلّ مرجعي مستقل ----------------
+     كل الوظائف بفلاتر الإدارة والمرحلة ونوع التوظيف، وعرضين:
+     بطاقات تُظهر مسار المراحل، وجدول للمسح السريع. */
+  function pageJobs() {
+    const all = rows("jobs");
+    const byType = state.jobType ? all.filter((j) => (j.hire_type || "") === state.jobType) : all;
+    const atStage = (i) => byType.filter((j) => Number(j.stage) === i);
+    const shown = state.stage == null ? byType : atStage(state.stage);
+
+    /* شريط الفلاتر — «الإدارة» يكتب في الفلتر العام نفسه فلا يتضارب مصدران */
+    const unitOpts = `<option value="">${esc(t("الكل"))}</option>` + units().map((u) =>
+      `<option value="${esc(u.id)}" ${state.filters.unit === u.id ? "selected" : ""}>${esc((u.parent_id ? "— " : "") + uname(u))}</option>`).join("");
+    const stageOpts = `<option value="">${esc(t("كل المراحل"))}</option>` + STAGES.map((s, i) =>
+      // state.stage قد يكون null، و Number(null) يساوي صفرًا فتُختار «شاغرة» خطأً
+      `<option value="${i}" ${state.stage != null && Number(state.stage) === i ? "selected" : ""}>${esc(t(s))}</option>`).join("");
+    const typeOpts = ["", "جديدة", "بديلة"].map((v) =>
+      `<option value="${esc(v)}" ${state.jobType === v ? "selected" : ""}>${esc(v ? t(v) : t("كل الأنواع"))}</option>`).join("");
+
+    const view = state.jobsView === "table" ? "table" : "cards";
+    const filters = `<div class="jfilters">
+      <label class="tb sel-wrap"><span class="k">${esc(t("الإدارة"))}</span>
+        <select onchange="APP.setFilter('unit',this.value)">${unitOpts}</select>${CHEV}</label>
+      <label class="tb sel-wrap"><span class="k">${esc(t("المرحلة"))}</span>
+        <select onchange="APP.setStage(this.value===''?null:Number(this.value),true)">${stageOpts}</select>${CHEV}</label>
+      <label class="tb sel-wrap"><span class="k">${esc(t("نوع التوظيف"))}</span>
+        <select onchange="APP.setJobType(this.value)">${typeOpts}</select>${CHEV}</label>
+      <div class="sp"></div>
+      <span class="vswitch">
+        <b class="${view === "cards" ? "on" : ""}" onclick="APP.setJobsView('cards')">${esc(t("بطاقات"))}</b>
+        <b class="${view === "table" ? "on" : ""}" onclick="APP.setJobsView('table')">${esc(t("جدول"))}</b></span>
+      ${canEdit() ? `<button class="btn btn-p" onclick="APP.openForm('job')">${icon("plus")} ${esc(t("إضافة وظيفة"))}</button>` : ""}
+    </div>`;
+
+    const sum = STAGES.map((s, i) => `<div class="sum${state.stage === i ? " on" : ""}" onclick="APP.setStage(${i})" title="${esc(t("اعرض من في هذه المرحلة"))}">
+      <div class="n">${atStage(i).length}</div><div class="l">${esc(t(s))}</div></div>`).join("");
+    const tiles = `<div class="sumrow" style="grid-template-columns:repeat(${STAGES.length},1fr)">${sum}</div>`;
+
+    const cards = shown.map((j, i) => {
+      const steps = STAGES.map((s, si) => {
+        const cls = si < j.stage ? "done" : si === Number(j.stage) ? "cur" : "";
+        return `<div class="step ${cls}"><div class="c">${si < j.stage ? "✓" : si}</div><div class="t">${esc(t(s))}</div></div>`;
+      }).join("");
+      const upd = canEdit() ? `<button class="btn btn-g" onclick="APP.openForm('job','${jsq(j.id)}')">${icon("pen")} ${esc(t("تحديث المرحلة"))}</button>` : "";
+      const del = canEdit() ? `<button class="btn btn-x" onclick="APP.removeRow('jobs','${jsq(j.id)}')">${icon("trash")} ${esc(t("حذف"))}</button>` : "";
+      return `<div class="acc ${i === 0 ? "open" : ""}"><div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="nm">${esc(j.candidate || t("بلا مرشح بعد"))}</span><span class="pos">${esc(j.title)}</span>
+        <span class="jcode">${esc(j.code || "")}</span>
+        <span class="badge ${j.hire_type === "بديلة" ? "b-warn" : "b-info"}">${esc(t(STAGES[j.stage] || ""))}</span><span class="chev">${CHEV}</span></div>
+        <div class="body"><div class="stepper">${steps}</div>
+        <div class="jmeta">
+          <div class="mi"><span class="k">${esc(t("الإدارة"))}</span><span class="v">${esc(uname(unitById(j.unit_id)))}</span></div>
+          <div class="mi"><span class="k">${esc(t("الدرجة الوظيفية"))}</span><span class="v">${esc(j.grade || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("مدير الإدارة"))}</span><span class="v">${esc(j.manager || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("نوع التوظيف"))}</span><span class="v">${esc(j.hire_type || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("المتقدمون"))}</span><span class="v">${esc(String(j.received || 0))}</span></div>
+          <div class="mi"><span class="k">${esc(t("تاريخ المباشرة"))}</span><span class="v">${esc(j.start_date ? fmtDate(j.start_date) : "—")}</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <div class="note" style="margin:0">${esc(t("آخر تحديث"))}: ${esc(j.note || "—")}</div>${upd}${del}</div></div></div>`;
+    }).join("");
+
+    const head = ["رقم الوظيفة", "المسمى الوظيفي", "الإدارة", "الدرجة الوظيفية", "نوع التوظيف", "المرحلة", "المرشح", "المتقدمون", "تاريخ المباشرة"];
+    const body = shown.map((j) => {
+      const act = canEdit()
+        ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="APP.openForm('job','${jsq(j.id)}')">${icon("pen")}</span>
+           <span class="iact del" title="${esc(t("حذف"))}" onclick="APP.removeRow('jobs','${jsq(j.id)}')">${icon("trash")}</span>` : "";
+      return `<tr><td class="mono">${esc(j.code || "—")}</td><td>${esc(j.title || "—")}</td>
+        <td>${esc(uname(unitById(j.unit_id)) || "—")}</td><td>${esc(j.grade || "—")}</td>
+        <td>${esc(j.hire_type || "—")}</td>
+        <td><span class="badge ${Number(j.stage) === JOINED ? "b-good" : Number(j.stage) === 0 ? "b-warn" : "b-info"}">${esc(t(STAGES[j.stage] || ""))}</span></td>
+        <td>${esc(j.candidate || "—")}</td><td>${esc(String(j.received || 0))}</td>
+        <td>${esc(j.start_date ? fmtDate(j.start_date) : "—")}</td><td class="ta">${act}</td></tr>`;
+    }).join("");
+    const table = `<div class="tblwrap"><table class="dtable"><thead><tr>${
+      head.map((h) => `<th>${esc(t(h))}</th>`).join("")}<th></th></tr></thead><tbody>${body}</tbody></table></div>`;
+
+    const note = state.stage == null && !state.jobType ? "" :
+      `<div class="stagenote">${esc(t("تعرض الآن"))} ${shown.length} ${esc(t("وظيفة"))}
+        <button class="btn btn-x" onclick="APP.clearJobFilters()">${esc(t("إلغاء الفلاتر"))}</button></div>`;
+
+    const body2 = shown.length
+      ? (view === "table" ? table : cards)
+      : `<div class="empty">${esc(t("لا توجد وظائف مطابقة للفلاتر الحالية"))}</div>`;
+
+    const open = byType.filter((j) => Number(j.stage) < JOINED).length;
+    const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="سجل الوظائف">${esc(t("سجل الوظائف"))}</h3></div>
+      <div class="hero"><div class="hero-circle"><span class="hero-n">${byType.length}</span><span class="hero-l">${esc(t("وظيفة"))}</span></div>
+      <div class="hero-facts">
+        <div class="hf"><span>${esc(t("مفتوحة"))}</span><b>${open}</b></div>
+        <div class="hf"><span>${esc(t("الانضمام"))}</span><b>${byType.length - open}</b></div>
+        <div class="hf"><span>${esc(t("بديلة"))}</span><b>${byType.filter((j) => j.hire_type === "بديلة").length}</b></div>
+        <div class="hf"><span>${esc(t("المتقدمون"))}</span><b>${byType.reduce((s, j) => s + Number(j.received || 0), 0)}</b></div></div></div>`;
+
+    return `<div class="mrow"><div class="vhost"><div class="view show">
+      ${filters}${tiles}${note}${body2}</div></div>
+      <div class="panel side-panel">${side}</div></div>`;
+  }
 
   // التدريب
   function pageTraining() {
@@ -2292,7 +2367,7 @@ window.APP_CONFIG = {
 
   /* ---------------- الهيكل العام ---------------- */
   function shell(title, body) {
-    const nav = [["index", "الرئيسية", "home"], ["recruitment", "التوظيف", "users"], ["training", "التدريب", "cap"],
+    const nav = [["index", "الرئيسية", "home"], ["recruitment", "التوظيف", "users"], ["jobs", "الوظائف", "case"], ["training", "التدريب", "cap"],
     ["tamheer", "طلبات تمهير", "group"], ["resignations", "الاستقالات", "exit"]];
     const rail = nav.map(([p, tt, ic]) => `<a href="#/${p === "index" ? "" : p}" class="${state.page === p ? "on" : ""}"><span class="tip">${esc(t(tt))}</span>${icon(ic)}</a>`).join("");
 
@@ -2608,7 +2683,13 @@ ${editBtn}
     "اللوحة الرئيسية": "Dashboard",
     // شريط الأدوات
     "القطاع / الإدارة": "Department", "السنة": "Year", "الشهر": "Month",
-    "الكل": "All", "منتهي": "Ended", "عرض الكل": "Show all", "بديل استقالة": "Backfill for", "وحدات": "units", "نسبة الإشغال مقابل الوظائف": "Occupancy vs positions", "الوظائف والانضمام": "Positions and onboarding", "انضم": "joined", "كل الأشهر": "All months", "تعديل العناوين": "Edit titles",
+    "الكل": "All", "الوظائف": "Positions", "سجل الوظائف": "Positions register",
+    "كل المراحل": "All stages", "كل الأنواع": "All types", "نوع التوظيف": "Type",
+    "جديدة": "New", "بديلة": "Backfill", "بطاقات": "Cards", "جدول": "Table",
+    "رقم الوظيفة": "Job ID", "المرشح": "Candidate", "المتقدمون": "Applicants",
+    "مفتوحة": "Open", "وظيفة": "positions", "تعرض الآن": "Showing",
+    "إلغاء الفلاتر": "Clear filters", "بلا مرشح بعد": "No candidate yet",
+    "لا توجد وظائف مطابقة للفلاتر الحالية": "No positions match the current filters", "منتهي": "Ended", "عرض الكل": "Show all", "بديل استقالة": "Backfill for", "وحدات": "units", "نسبة الإشغال مقابل الوظائف": "Occupancy vs positions", "الوظائف والانضمام": "Positions and onboarding", "انضم": "joined", "كل الأشهر": "All months", "تعديل العناوين": "Edit titles",
     // الصلاحيات
     "مالك الداشبورد": "Dashboard owner", "مُدخِل بيانات": "Data entry", "عرض فقط": "View only",
     "تسجيل الخروج": "Sign out",
@@ -2715,6 +2796,7 @@ ${editBtn}
   const PAGES = {
     index: { title: "اللوحة الرئيسية", render: pageIndex },
     recruitment: { title: "التوظيف", render: pageRecruitment },
+    jobs: { title: "الوظائف", render: pageJobs },
     training: { title: "التدريب", render: pageTraining },
     tamheer: { title: "طلبات تمهير", render: pageTamheer },
     resignations: { title: "الاستقالات", render: pageResignations },
@@ -2769,7 +2851,10 @@ ${editBtn}
   /* ---------------- الواجهة العامة ---------------- */
   window.APP = {
     setTab(k) { state.tab = k; render(); },
-    setStage(i) { state.stage = state.stage === i ? null : i; render(); },
+    setStage(i, exact) { state.stage = exact ? i : (state.stage === i ? null : i); render(); },
+    setJobType(v) { state.jobType = v || ""; render(); },
+    setJobsView(v) { state.jobsView = v === "table" ? "table" : "cards"; render(); },
+    clearJobFilters() { state.stage = null; state.jobType = ""; render(); },
     setOccSort(v) { state.occSort = v === "desc" ? "desc" : "asc"; render(); },
     exportPDF,
     setScope(v) { state.scope = v || "all"; render(); },
