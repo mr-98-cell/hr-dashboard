@@ -1362,6 +1362,7 @@ ${editBtn}
     job: {
       table: "jobs", title: "الوظيفة",
       fields: (r) => [
+        ["code", "رقم الوظيفة", "ro", r.code, null, false],
         ["title", "المسمى الوظيفي", "text", r.title, null, false],
         ["unit_id", "الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
         ["grade", "الدرجة الوظيفية", "select", r.grade, opts(["", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
@@ -1457,10 +1458,14 @@ ${editBtn}
     const row = id ? (db()[F.table] || []).find((r) => r.id === id) || {} : {};
     // فتح النموذج من صفحة بعينها يملأ حقل «يخصّ» مسبقًا
     if (preset && !id) row.source = preset;
+    // وظيفة جديدة: يُولَّد معرّفها فورًا ويظهر في النموذج قبل الحفظ
+    if (kind === "job" && !id) row.code = nextJobCode();
     const fh = F.fields(row).map(([k, lbl, type, val, sel, full]) => {
       const inp = sel != null
         ? `<select class="inp" data-k="${esc(k)}">${sel}</select>`
-        : `<input class="inp" data-k="${esc(k)}" type="${esc(type)}" value="${esc(val == null ? "" : val)}"
+        : type === "ro"
+          ? `<input class="inp ro" data-k="${esc(k)}" value="${esc(val == null ? "" : val)}" readonly tabindex="-1">`
+          : `<input class="inp" data-k="${esc(k)}" type="${esc(type)}" value="${esc(val == null ? "" : val)}"
              ${type === "date" ? 'lang="ar-u-ca-gregory"' : ""} placeholder="${esc(t("اكتب هنا…"))}">`;
       return `<div class="fld2 ${full ? "full" : ""}"><label>${esc(t(lbl))}</label>${inp}</div>`;
     }).join("");
@@ -1501,7 +1506,7 @@ ${editBtn}
     /* وظيفة جديدة: معرّف يُولَّد تلقائيًا، وتُفتح «شاغرة» فتُحسب فورًا
        ضمن شواغر إدارتها وتنقص نسبة إشغالها. */
     if (kind === "job" && !id) {
-      payload.code = nextJobCode();
+      if (!String(payload.code || "").trim()) payload.code = nextJobCode();
       if (payload.stage == null || payload.stage === "") payload.stage = 0;
       if (!payload.opened_date) payload.opened_date = new Date().toISOString().slice(0, 10);
     }

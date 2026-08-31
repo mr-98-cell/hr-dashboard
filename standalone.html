@@ -483,6 +483,9 @@ body.edit .editbar{display:flex}
 @media(max-width:900px){.qmeta,.qunit{display:none}}
 .srclink{display:inline-block;margin-inline-start:6px;font-size:10.5px;font-weight:700;color:var(--gold);text-decoration:none}
 .srclink:hover{text-decoration:underline}
+/* حقل للعرض فقط داخل النماذج */
+.inp.ro{background:var(--g-50);color:var(--g-800);font-family:ui-monospace,monospace;
+  letter-spacing:.5px;cursor:default;border-style:dashed}
 /* ===== إضافات التطبيق فوق التصميم الأساسي ===== */
 
 .boot{color:#fff;text-align:center;padding:80px;font-family:"Noto Sans Arabic",sans-serif}
@@ -952,6 +955,24 @@ window.APP_CONFIG = {
       delete db.vacancies;
       delete db.candidates;
       changed = true;
+    }
+
+    /* ---- وظائف بلا معرّف ----
+       أُضيفت قبل أن يصير المعرّف يُولَّد تلقائيًا. نُسند لكل واحدة رقمًا
+       يبدأ بعد أكبر رقم مستخدم في سنتها فلا يتصادم مع القائم. */
+    if (Array.isArray(db.jobs)) {
+      const seq = {};
+      db.jobs.forEach((j) => {
+        const m = /^JOB-(\d{4})-(\d+)$/.exec(String(j.code || ""));
+        if (m) seq[m[1]] = Math.max(seq[m[1]] || 0, Number(m[2]));
+      });
+      db.jobs.forEach((j) => {
+        if (String(j.code || "").trim()) return;
+        const yr = String(Number(j.year) || new Date().getFullYear());
+        seq[yr] = (seq[yr] || 0) + 1;
+        j.code = `JOB-${yr}-${String(seq[yr]).padStart(3, "0")}`;
+        changed = true;
+      });
     }
 
     /* ---- الحالات النصية إلى مراحل مرقّمة ---- */
@@ -2586,6 +2607,7 @@ ${editBtn}
     job: {
       table: "jobs", title: "الوظيفة",
       fields: (r) => [
+        ["code", "رقم الوظيفة", "ro", r.code, null, false],
         ["title", "المسمى الوظيفي", "text", r.title, null, false],
         ["unit_id", "الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
         ["grade", "الدرجة الوظيفية", "select", r.grade, opts(["", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
@@ -2681,10 +2703,14 @@ ${editBtn}
     const row = id ? (db()[F.table] || []).find((r) => r.id === id) || {} : {};
     // فتح النموذج من صفحة بعينها يملأ حقل «يخصّ» مسبقًا
     if (preset && !id) row.source = preset;
+    // وظيفة جديدة: يُولَّد معرّفها فورًا ويظهر في النموذج قبل الحفظ
+    if (kind === "job" && !id) row.code = nextJobCode();
     const fh = F.fields(row).map(([k, lbl, type, val, sel, full]) => {
       const inp = sel != null
         ? `<select class="inp" data-k="${esc(k)}">${sel}</select>`
-        : `<input class="inp" data-k="${esc(k)}" type="${esc(type)}" value="${esc(val == null ? "" : val)}"
+        : type === "ro"
+          ? `<input class="inp ro" data-k="${esc(k)}" value="${esc(val == null ? "" : val)}" readonly tabindex="-1">`
+          : `<input class="inp" data-k="${esc(k)}" type="${esc(type)}" value="${esc(val == null ? "" : val)}"
              ${type === "date" ? 'lang="ar-u-ca-gregory"' : ""} placeholder="${esc(t("اكتب هنا…"))}">`;
       return `<div class="fld2 ${full ? "full" : ""}"><label>${esc(t(lbl))}</label>${inp}</div>`;
     }).join("");
@@ -2725,7 +2751,7 @@ ${editBtn}
     /* وظيفة جديدة: معرّف يُولَّد تلقائيًا، وتُفتح «شاغرة» فتُحسب فورًا
        ضمن شواغر إدارتها وتنقص نسبة إشغالها. */
     if (kind === "job" && !id) {
-      payload.code = nextJobCode();
+      if (!String(payload.code || "").trim()) payload.code = nextJobCode();
       if (payload.stage == null || payload.stage === "") payload.stage = 0;
       if (!payload.opened_date) payload.opened_date = new Date().toISOString().slice(0, 10);
     }

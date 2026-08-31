@@ -195,6 +195,24 @@
       changed = true;
     }
 
+    /* ---- وظائف بلا معرّف ----
+       أُضيفت قبل أن يصير المعرّف يُولَّد تلقائيًا. نُسند لكل واحدة رقمًا
+       يبدأ بعد أكبر رقم مستخدم في سنتها فلا يتصادم مع القائم. */
+    if (Array.isArray(db.jobs)) {
+      const seq = {};
+      db.jobs.forEach((j) => {
+        const m = /^JOB-(\d{4})-(\d+)$/.exec(String(j.code || ""));
+        if (m) seq[m[1]] = Math.max(seq[m[1]] || 0, Number(m[2]));
+      });
+      db.jobs.forEach((j) => {
+        if (String(j.code || "").trim()) return;
+        const yr = String(Number(j.year) || new Date().getFullYear());
+        seq[yr] = (seq[yr] || 0) + 1;
+        j.code = `JOB-${yr}-${String(seq[yr]).padStart(3, "0")}`;
+        changed = true;
+      });
+    }
+
     /* ---- الحالات النصية إلى مراحل مرقّمة ---- */
     const TR_FROM_STATUS = { "تحت الإجراء": 1, "قائم": 2, "مكتمل": 3 };
     for (const t of ["trainees", "tamheer"]) {
