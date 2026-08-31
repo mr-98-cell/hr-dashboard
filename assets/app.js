@@ -41,6 +41,7 @@
     lang: "ar",
     occSort: "asc",  // ترتيب الإشغال: asc = الأدنى أولًا
     scope: "all",  // محتوى تقرير PDF: الكل أو قسم بعينه
+    query: "",     // نص البحث السريع في الرئيسية
     jobType: "",   // فلتر نوع التوظيف في صفحة الوظائف
     jobsView: "cards", // عرض الوظائف: بطاقات أو جدول
     openNodes: {}, // فروع الشجرة المفتوحة في تبويب القطاعات
@@ -83,6 +84,7 @@
     done: '<circle cx="12" cy="12" r="8.5"/><path d="m8.2 12.2 2.6 2.6L15.8 9.8"/>',
     reject: '<circle cx="12" cy="12" r="8.5"/><path d="m9.2 9.2 5.6 5.6M14.8 9.2l-5.6 5.6"/>',
     cal: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 9.5h17M8 3.5V6.5M16 3.5V6.5"/>',
+    find: '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
     case: '<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M9 7.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5v2"/><path d="M3 12.5h18M10.5 12.5v2h3v-2"/>',
     bell: '<path d="M6.5 10a5.5 5.5 0 0 1 11 0c0 4 1.5 5.5 1.5 5.5h-14S6.5 14 6.5 10z"/><path d="M10.2 19a2 2 0 0 0 3.6 0"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18z"/>',
@@ -211,7 +213,7 @@
     return `<div class="ring-wrap"><svg viewBox="0 0 154 154" width="${size || 240}" height="${size || 240}">
       <circle cx="77" cy="77" r="${R}" fill="none" stroke="var(--ringtrack,var(--g-50))" stroke-width="15"/>
       <circle cx="77" cy="77" r="${R}" fill="none" stroke="${col}" stroke-width="15" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 77 77)"/>
-      <text x="77" y="72" text-anchor="middle" style="font-size:32px;font-weight:800;font-family:Noto Kufi Arabic;fill:var(--g-800)">${p}%</text>
+      <text x="77" y="72" text-anchor="middle" style="font-size:32px;font-weight:800;font-family:Noto Kufi Arabic;fill:var(--g-800)">${p}٪</text>
       <text x="77" y="95" text-anchor="middle" style="font-size:12px;fill:var(--muted)">${esc(t(label))}</text></svg>
       ${note ? `<div class="ring-note">${esc(note)}</div>` : ""}</div>`;
   }
@@ -296,8 +298,9 @@
     const cls = delta > 0 ? "up" : delta < 0 ? "down" : "flat";
     const arrow = delta > 0 ? "▲" : delta < 0 ? "▼" : "■";
     const d = delta === null ? "" : `<div class="kpi-d ${cls}">${arrow} ${Math.abs(delta)}<span>· ${esc(note)}</span></div>`;
+    const foot = d || (note ? `<div class="kpi-d flat"><span>${esc(note)}</span></div>` : "");
     return `<div class="kpi${hero ? " hero" : ""}"><div class="kpi-l">${esc(t(label))}</div>
-      <div class="kpi-v">${esc(value)}</div>${d || `<div class="kpi-d flat"><span>${esc(note)}</span></div>`}</div>`;
+      <div class="kpi-v">${esc(value)}</div>${foot}</div>`;
   }
 
   /* ---------------- سجل التحديثات ---------------- */
@@ -311,6 +314,18 @@
     if (s.length < 10) return "";
     const tm = s.slice(11, 16);
     return tm ? `${fmtDate(s.slice(0, 10))} · ${tm}` : fmtDate(s.slice(0, 10));
+  }
+
+  /* معرّف الوظيفة: JOB-<السنة>-<تسلسل> — يبدأ بعد أكبر رقم مستخدم
+     في السنة نفسها فلا يتكرر حتى بعد حذف وظائف. */
+  function nextJobCode() {
+    const yr = new Date().getFullYear();
+    const used = (db().jobs || []).map((j) => {
+      const m = /^JOB-(\d{4})-(\d+)$/.exec(String(j.code || ""));
+      return m && Number(m[1]) === yr ? Number(m[2]) : 0;
+    });
+    const next = Math.max(0, ...used) + 1;
+    return `JOB-${yr}-${String(next).padStart(3, "0")}`;
   }
 
   /* يُستدعى بعد كل إضافة/تعديل/حذف — الفشل هنا لا يُفشل العملية الأصلية */
@@ -383,10 +398,10 @@
 
     const kpis = `<div class="kstrip">
       ${kpiTile("نسبة الإشغال", occ + "٪", null,
-        `${agg.filled} ${t("مشغولة")} · ${agg.vacant} ${t("شاغرة")} ${t("من")} ${agg.approved} ${t("وظيفة معتمدة")}`, true)}
+        `${t("من")} ${agg.approved} ${t("وظيفة معتمدة")}: ${agg.filled} ${t("مشغولة")} ${t("و")}${agg.vacant} ${t("شاغرة")}`, true)}
       ${kpiTile("الشواغر المفتوحة", vacNow, vacPrev === null ? null : vacNow - vacPrev,
-        vacPrev === null ? t("ضمن الفترة المختارة") : t("مقارنة بالشهر السابق"))}
-      ${kpiTile("مرشحون تحت الإجراء", pipeline, null, t("في المراحل الست"))}
+        vacPrev === null ? "" : t("مقارنة بالشهر السابق"))}
+      ${kpiTile("مرشحون تحت الإجراء", pipeline, null, "")}
       ${kpiTile("متدربون قائمون", trOn + tmOn, null, `${trOn} ${t("تدريب")} · ${tmOn} ${t("تمهير")}`)}
     </div>`;
 
@@ -479,6 +494,57 @@
       <div class="vgrid" style="margin-top:18px">${trend}</div>`;
   }
 
+  /* ---------------- البحث السريع ----------------
+     يمسح كل السجلات بأي دلالة (اسم · مسمى · رقم وظيفة · جامعة · مشرف)
+     ويدلّ على الصفحة التي يقيم فيها كل نتيجة. */
+  const SEARCH_IN = [
+    ["jobs", "الوظائف", "jobs", (r) => [r.candidate, r.title, r.code, r.manager, r.grade],
+      (r) => `${STAGES[r.stage] || ""} · ${r.code || ""}`],
+    ["interviews", "المقابلات", "recruitment", (r) => [r.candidate, r.position, r.owner],
+      (r) => `${r.status || ""}${r.date ? " · " + fmtDate(r.date) : ""}`],
+    ["onboarding", "الانضمام", "recruitment", (r) => [r.name, r.position, r.manager, r.grade],
+      (r) => r.start_date ? fmtDate(r.start_date) : ""],
+    ["trainees", "التدريب", "training", (r) => [r.name, r.university, r.supervisor],
+      (r) => TR_STAGES[r.stage] || ""],
+    ["tamheer", "طلبات تمهير", "tamheer", (r) => [r.name, r.university, r.supervisor],
+      (r) => TR_STAGES[r.stage] || ""],
+    ["resignations", "الاستقالات", "resignations", (r) => [r.name, r.position, r.grade],
+      (r) => `${RS_STAGES[r.stage] || ""}${r.last_day ? " · " + fmtDate(r.last_day) : ""}`],
+  ];
+
+  function searchBox() {
+    const q = (state.query || "").trim();
+    const box = `<div class="qsearch">
+      <span class="qi">${icon("find")}</span>
+      <input id="qs" class="qinp" value="${esc(q)}" placeholder="${esc(t("ابحث بأي دلالة: اسم · مسمى · رقم وظيفة · جامعة"))}"
+        oninput="APP.setQuery(this.value)" autocomplete="off">
+      ${q ? `<button class="qx" onclick="APP.setQuery('')">✕</button>` : ""}</div>`;
+    if (!q) return box;
+
+    const norm = (v) => String(v == null ? "" : v).replace(/[أإآ]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه").toLowerCase();
+    const needle = norm(q);
+    const hits = [];
+    SEARCH_IN.forEach(([tbl, label, page, fields, meta]) => {
+      (db()[tbl] || []).forEach((r) => {
+        const hay = fields(r).filter(Boolean).map(norm).join(" ");
+        if (hay.indexOf(needle) < 0) return;
+        hits.push({ label: label, page: page, unit: uname(unitById(r.unit_id)),
+          title: r.candidate || r.name || r.title || "—", meta: meta(r) });
+      });
+    });
+
+    const body = hits.slice(0, 40).map((h) => `<a class="qrow" href="#/${jsq(h.page === "index" ? "" : h.page)}">
+      <span class="qwhere">${esc(t(h.label))}</span>
+      <span class="qname">${esc(h.title)}</span>
+      <span class="qmeta">${esc(h.meta || "—")}</span>
+      <span class="qunit">${esc(h.unit || "—")}</span>
+      <span class="qgo">${esc(t("انتقل"))} ←</span></a>`).join("");
+
+    return box + `<div class="qres"><div class="qhead">${hits.length} ${esc(t("نتيجة"))}${
+      hits.length > 40 ? ` · ${esc(t("تُعرض أول ٤٠"))}` : ""}</div>${
+      hits.length ? body : `<div class="empty">${esc(t("لا توجد نتائج مطابقة"))}</div>`}</div>`;
+  }
+
   // اللوحة الرئيسية
   function pageIndex() {
     const jobs = rows("jobs");
@@ -523,7 +589,7 @@
       <div class="body">${p[2]}</div></div>`).join("");
 
     const details = `<div class="tcards">${cards}</div><div class="mrow full"><div class="vgrid">${panels}</div></div>`;
-    return tabbed([["exec", "الملخص التنفيذي"], ["det", "التفاصيل الإضافية"]],
+    return searchBox() + tabbed([["exec", "الملخص التنفيذي"], ["det", "التفاصيل الإضافية"]],
       [["exec", pageExec()], ["det", details]]);
   }
 
@@ -577,6 +643,46 @@
       + plist("جدول المقابلات", "", ivCards, ["إضافة مقابلة", "interview"]);
 
 
+    /* مراحل التوظيف — بطاقة لكل مرحلة، والوظيفة تتحرك بينها */
+    const atStage = (i) => jobs.filter((j) => Number(j.stage) === i);
+    // بطاقة «الانضمام» تنقل إلى تبويب الانضمام حيث توزيع المنضمين على الإدارات
+    const sum = STAGES.map((s, i) => `<div class="sum${state.stage === i ? " on" : ""}${i === JOINED ? " link" : ""}"
+        onclick="${i === JOINED ? "APP.setTab('onb')" : `APP.setStage(${i})`}"
+        title="${esc(i === JOINED ? t("اعرض جدول الانضمام") : t("اعرض من في هذه المرحلة"))}">
+      <div class="n">${atStage(i).length}</div><div class="l">${esc(t(s))}</div></div>`).join("");
+
+    const shown = state.stage == null ? jobs : atStage(state.stage);
+    const accs = shown.map((j, i) => {
+      const steps = STAGES.map((s, si) => {
+        const cls = si < j.stage ? "done" : si === Number(j.stage) ? "cur" : "";
+        return `<div class="step ${cls}"><div class="c">${si < j.stage ? "✓" : si}</div><div class="t">${esc(t(s))}</div></div>`;
+      }).join("");
+      const upd = canEdit() ? `<button class="btn btn-g" onclick="APP.openForm('job','${jsq(j.id)}')">${icon("pen")} ${esc(t("تحديث المرحلة"))}</button>` : "";
+      const del = canEdit() ? `<button class="btn btn-x" onclick="APP.removeRow('jobs','${jsq(j.id)}')">${icon("trash")} ${esc(t("حذف"))}</button>` : "";
+      return `<div class="acc ${i === 0 ? "open" : ""}"><div class="head" onclick="this.parentElement.classList.toggle('open')">
+        <span class="nm">${esc(j.candidate || t("بلا مرشح بعد"))}</span><span class="pos">${esc(j.title)}</span>
+        <span class="jcode">${esc(j.code || "")}</span>
+        <span class="badge b-info">${esc(t(STAGES[j.stage] || ""))}</span><span class="chev">${CHEV}</span></div>
+        <div class="body"><div class="stepper">${steps}</div>
+        <div class="jmeta">
+          <div class="mi"><span class="k">${esc(t("الإدارة"))}</span><span class="v">${esc(uname(unitById(j.unit_id)))}</span></div>
+          <div class="mi"><span class="k">${esc(t("الدرجة الوظيفية"))}</span><span class="v">${esc(j.grade || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("مدير الإدارة"))}</span><span class="v">${esc(j.manager || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("نوع التوظيف"))}</span><span class="v">${esc(j.hire_type || "—")}${
+            j.from_resignation ? ` <a class="srclink" href="#/resignations">${esc(t("مصدرها استقالة"))} ←</a>` : ""}</span></div>
+          <div class="mi"><span class="k">${esc(t("المتقدمون"))}</span><span class="v">${esc(String(j.received || 0))}</span></div>
+          <div class="mi"><span class="k">${esc(t("تاريخ المباشرة"))}</span><span class="v">${esc(j.start_date ? fmtDate(j.start_date) : "—")}</span></div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <div class="note" style="margin:0">${esc(t("آخر تحديث"))}: ${esc(j.note || "—")}</div>${upd}${del}</div></div></div>`;
+    }).join("");
+
+    const addJob = canEdit() ? `<div style="display:flex;margin-bottom:14px"><button class="btn btn-p" onclick="APP.openForm('job')">${icon("plus")} ${esc(t("إضافة وظيفة"))}</button></div>` : "";
+    const stageNote = state.stage == null ? "" :
+      `<div class="stagenote">${esc(t("تعرض الآن مرحلة"))} «${esc(t(STAGES[state.stage]))}» — ${atStage(state.stage).length}
+        <button class="btn btn-x" onclick="APP.setStage(${state.stage})">${esc(t("عرض كل المراحل"))}</button></div>`;
+    const flow = addJob + `<div class="sumrow" style="grid-template-columns:repeat(${STAGES.length},1fr)">${sum}</div>`
+      + stageNote + (accs || `<div class="empty">${esc(t("لا توجد وظائف في هذه المرحلة"))}</div>`);
     /* الانضمام — يُبنى من الوظائف التي بلغت المرحلة الأخيرة، ويقبل إضافة يدوية */
     const manual = rows("onboarding");
     const fromJobs = joined.map((j) => ({
@@ -632,8 +738,8 @@
 
     const orgBlock = `<div class="orgblock">${sectorsBody()}</div>`;
     const ovFull = ORG_FIRST ? orgBlock + ov : ov + orgBlock;
-    const views = [["ov", ovFull], ["iv", ivView], ["onb", onbView]];
-    const tabs = [["ov", "نظرة عامة"], ["iv", "المقابلات"], ["onb", "الانضمام"]];
+    const views = [["ov", ovFull], ["iv", ivView], ["flow", flow], ["onb", onbView]];
+    const tabs = [["ov", "نظرة عامة"], ["iv", "المقابلات"], ["flow", "مراحل التوظيف"], ["onb", "الانضمام"]];
 
     const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="نسبة إنجاز طلبات المقابلات">${esc(t("نسبة إنجاز طلبات المقابلات"))}</h3></div>
       <div class="hero">${ring(pct(ivDone, ivs.length), "var(--g-700)", "إنجاز المقابلات", `${ivDone} ${t("مكتملة من")} ${ivs.length} ${t("مقابلة")}`, 290)}
@@ -642,7 +748,8 @@
         <div class="hf"><span>${esc(t("وظائف مفتوحة"))}</span><b>${open.length}</b></div></div></div>`;
 
     const active = state.tab || tabs[0][0];
-    return tabbed(tabs, views, active === "ov" ? null : side);
+    // «نظرة عامة» و«الانضمام» يعرضان بعرض كامل: الأولى للشجرة والثاني لجدوله
+    return tabbed(tabs, views, (active === "ov" || active === "onb") ? null : side);
   }
 
   /* شريط مراحل مشترك للتدريب وتمهير — بنفس تنسيق مراحل التوظيف */
@@ -675,7 +782,7 @@
     const stageOpts = `<option value="">${esc(t("كل المراحل"))}</option>` + STAGES.map((s, i) =>
       // state.stage قد يكون null، و Number(null) يساوي صفرًا فتُختار «شاغرة» خطأً
       `<option value="${i}" ${state.stage != null && Number(state.stage) === i ? "selected" : ""}>${esc(t(s))}</option>`).join("");
-    const typeOpts = ["", "جديدة", "بديلة"].map((v) =>
+    const typeOpts = ["", "جديدة", "استقالة", "انتقال داخلي"].map((v) =>
       `<option value="${esc(v)}" ${state.jobType === v ? "selected" : ""}>${esc(v ? t(v) : t("كل الأنواع"))}</option>`).join("");
 
     const view = state.jobsView === "table" ? "table" : "cards";
@@ -713,7 +820,8 @@
           <div class="mi"><span class="k">${esc(t("الإدارة"))}</span><span class="v">${esc(uname(unitById(j.unit_id)))}</span></div>
           <div class="mi"><span class="k">${esc(t("الدرجة الوظيفية"))}</span><span class="v">${esc(j.grade || "—")}</span></div>
           <div class="mi"><span class="k">${esc(t("مدير الإدارة"))}</span><span class="v">${esc(j.manager || "—")}</span></div>
-          <div class="mi"><span class="k">${esc(t("نوع التوظيف"))}</span><span class="v">${esc(j.hire_type || "—")}</span></div>
+          <div class="mi"><span class="k">${esc(t("نوع التوظيف"))}</span><span class="v">${esc(j.hire_type || "—")}${
+            j.from_resignation ? ` <a class="srclink" href="#/resignations">${esc(t("مصدرها استقالة"))} ←</a>` : ""}</span></div>
           <div class="mi"><span class="k">${esc(t("المتقدمون"))}</span><span class="v">${esc(String(j.received || 0))}</span></div>
           <div class="mi"><span class="k">${esc(t("تاريخ المباشرة"))}</span><span class="v">${esc(j.start_date ? fmtDate(j.start_date) : "—")}</span></div>
         </div>
@@ -744,18 +852,8 @@
       ? (view === "table" ? table : cards)
       : `<div class="empty">${esc(t("لا توجد وظائف مطابقة للفلاتر الحالية"))}</div>`;
 
-    const open = byType.filter((j) => Number(j.stage) < JOINED).length;
-    const side = `<div class="s-h"><h3 class="ttl-edit" data-tk="1" data-k="سجل الوظائف">${esc(t("سجل الوظائف"))}</h3></div>
-      <div class="hero"><div class="hero-circle"><span class="hero-n">${byType.length}</span><span class="hero-l">${esc(t("وظيفة"))}</span></div>
-      <div class="hero-facts">
-        <div class="hf"><span>${esc(t("مفتوحة"))}</span><b>${open}</b></div>
-        <div class="hf"><span>${esc(t("الانضمام"))}</span><b>${byType.length - open}</b></div>
-        <div class="hf"><span>${esc(t("بديلة"))}</span><b>${byType.filter((j) => j.hire_type === "بديلة").length}</b></div>
-        <div class="hf"><span>${esc(t("المتقدمون"))}</span><b>${byType.reduce((s, j) => s + Number(j.received || 0), 0)}</b></div></div></div>`;
-
-    return `<div class="mrow"><div class="vhost"><div class="view show">
-      ${filters}${tiles}${note}${body2}</div></div>
-      <div class="panel side-panel">${side}</div></div>`;
+    return `<div class="mrow full"><div class="vhost"><div class="view show">
+      ${filters}${tiles}${note}${body2}</div></div></div>`;
   }
 
   // التدريب
@@ -940,21 +1038,30 @@
         onclick="APP.focusOrg('${jsq(x)}')">${esc(uname(unitById(x)))}</a>`).join("")}</div>`;
 
     // قائمة مرافقة بالأرقام الدقيقة — الشكل للنظرة والقائمة للقراءة
-    const list = kids.map((k, i) => {
-      const s2 = aggregate(k.id);
-      const p = pct(s2.filled, s2.approved);
-      const sub = childrenOf(k.id).length;
-      const edit = canEdit()
-        ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="event.stopPropagation();APP.openForm('unit','${jsq(k.id)}')">${icon("pen")}</span>` : "";
-      return `<div class="sbrow" onclick="APP.focusOrg('${jsq(sub ? k.id : focus || "")}')">
-        <span class="dot" style="background:${ORG_COLORS[i % ORG_COLORS.length]}"></span>
-        <span class="nm">${esc(uname(k))}</span>
-        <span class="num"><b>${s2.filled}</b> ${esc(t("من"))} ${s2.approved}</span>
-        <span class="pc">${p}٪</span>
-        <span class="vc">${s2.vacant ? `${esc(t("شاغر"))} ${s2.vacant}` : "—"}</span>
-        ${sub ? `<span class="go">${sub} ${esc(t("وحدات"))} ›</span>` : `<span class="go dim">—</span>`}
-        ${edit}</div>`;
-    }).join("");
+    /* القائمة شجرة تتفرّع في مكانها: الضغط على وحدة يفتح تابعيها تحتها
+       بنفس تصميم الصف، وضغطة ثانية تطويها — بلا انتقال إلى شاشة أخرى. */
+    function rows2(list, depth) {
+      return list.map((k, i) => {
+        const s2 = aggregate(k.id);
+        const p = pct(s2.filled, s2.approved);
+        const sub = childrenOf(k.id);
+        const isOpen = !!state.openNodes[k.id];
+        const edit = canEdit()
+          ? `<span class="iact" title="${esc(t("تعديل"))}" onclick="event.stopPropagation();APP.openForm('unit','${jsq(k.id)}')">${icon("pen")}</span>` : "";
+        const row = `<div class="sbrow${isOpen ? " on" : ""}" style="padding-inline-start:${13 + depth * 20}px"
+            ${sub.length ? `onclick="APP.toggleNode('${jsq(k.id)}')"` : ""}>
+          <span class="dot" style="background:${depth ? "var(--g-400)" : ORG_COLORS[i % ORG_COLORS.length]}"></span>
+          <span class="nm">${esc(uname(k))}</span>
+          <span class="num"><b>${s2.filled}</b> ${esc(t("من"))} ${s2.approved}</span>
+          <span class="pc">${p}٪</span>
+          <span class="vc">${s2.vacant ? `${esc(t("شاغر"))} ${s2.vacant}` : "—"}</span>
+          ${sub.length ? `<span class="go">${sub.length} ${esc(t("وحدات"))} ${isOpen ? "▴" : "▾"}</span>`
+                       : `<span class="go dim">—</span>`}
+          ${edit}</div>`;
+        return row + (isOpen && sub.length ? rows2(sub, depth + 1) : "");
+      }).join("");
+    }
+    const list = rows2(kids, 0);
 
     const chips = `<div class="dchips">
       <div class="dchip">${esc(t("الوظائف المعتمدة"))}<b>${a.approved}</b></div>
@@ -1259,7 +1366,7 @@ ${editBtn}
         ["unit_id", "الإدارة", "select", r.unit_id, unitSelect(r.unit_id), false],
         ["grade", "الدرجة الوظيفية", "select", r.grade, opts(["", "الخامسة", "السادسة", "السابعة", "الثامنة", "التاسعة", "العاشرة"], r.grade), false],
         ["manager", "مدير الإدارة", "text", r.manager, null, false],
-        ["hire_type", "نوع التوظيف", "select", r.hire_type, opts(["جديدة", "بديلة"], r.hire_type), false],
+        ["hire_type", "نوع التوظيف", "select", r.hire_type, opts(["جديدة", "استقالة", "انتقال داخلي"], r.hire_type), false],
         ["opened_date", "تاريخ فتح الوظيفة", "date", r.opened_date, null, false],
         ["stage", "المرحلة", "select", r.stage == null ? 0 : r.stage,
           STAGES.map((s, i) => `<option value="${i}" ${Number(r.stage || 0) === i ? "selected" : ""}>${s}</option>`).join(""), false],
@@ -1391,6 +1498,13 @@ ${editBtn}
       payload.ts = nowLocal();
       payload.author = (state.user && state.user.name) || "";
     }
+    /* وظيفة جديدة: معرّف يُولَّد تلقائيًا، وتُفتح «شاغرة» فتُحسب فورًا
+       ضمن شواغر إدارتها وتنقص نسبة إشغالها. */
+    if (kind === "job" && !id) {
+      payload.code = nextJobCode();
+      if (payload.stage == null || payload.stage === "") payload.stage = 0;
+      if (!payload.opened_date) payload.opened_date = new Date().toISOString().slice(0, 10);
+    }
     try {
       let saved = null;
       if (id) await DB.update(F.table, id, payload);
@@ -1401,11 +1515,10 @@ ${editBtn}
       if (kind === "resignation" && !id) {
         const already = (db().jobs || []).some((j) => j.from_resignation === saved.id);
         if (!already) {
-          const n = (db().jobs || []).length + 1;
           await DB.insert("jobs", {
-            code: `JOB-${new Date().getFullYear()}-${String(n).padStart(3, "0")}`,
+            code: nextJobCode(),
             title: payload.position || "", unit_id: payload.unit_id || "",
-            grade: payload.grade || "", manager: "", hire_type: "بديلة",
+            grade: payload.grade || "", manager: "", hire_type: "استقالة",
             opened_date: new Date().toISOString().slice(0, 10),
             stage: 0, candidate: "", received: 0, start_date: "",
             note: `${t("بديل استقالة")}: ${payload.name || ""}`,
@@ -1492,7 +1605,11 @@ ${editBtn}
     "اللوحة الرئيسية": "Dashboard",
     // شريط الأدوات
     "القطاع / الإدارة": "Department", "السنة": "Year", "الشهر": "Month",
-    "الكل": "All", "الوظائف": "Positions", "سجل الوظائف": "Positions register",
+    "الكل": "All", "انتقل": "Go", "نتيجة": "results", "تُعرض أول ٤٠": "first 40 shown",
+    "لا توجد نتائج مطابقة": "No matching results", "استقالة": "Resignation",
+    "انتقال داخلي": "Internal transfer", "اعرض جدول الانضمام": "Show onboarding table",
+    "ابحث بأي دلالة: اسم · مسمى · رقم وظيفة · جامعة": "Search by name, title, job ID or university",
+    "و": "and", "الوظائف": "Positions", "سجل الوظائف": "Positions register",
     "كل المراحل": "All stages", "كل الأنواع": "All types", "نوع التوظيف": "Type",
     "جديدة": "New", "بديلة": "Backfill", "بطاقات": "Cards", "جدول": "Table",
     "رقم الوظيفة": "Job ID", "المرشح": "Candidate", "المتقدمون": "Applicants",
@@ -1661,6 +1778,13 @@ ${editBtn}
   window.APP = {
     setTab(k) { state.tab = k; render(); },
     setStage(i, exact) { state.stage = exact ? i : (state.stage === i ? null : i); render(); },
+    setQuery(v) {
+      state.query = v;
+      render();
+      // نعيد التركيز ومؤشر الكتابة إلى آخر الحقل بعد إعادة الرسم
+      const el = $("#qs");
+      if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); }
+    },
     setJobType(v) { state.jobType = v || ""; render(); },
     setJobsView(v) { state.jobsView = v === "table" ? "table" : "cards"; render(); },
     clearJobFilters() { state.stage = null; state.jobType = ""; render(); },
