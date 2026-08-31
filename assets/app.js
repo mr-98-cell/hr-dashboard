@@ -516,7 +516,7 @@
     const q = (state.query || "").trim();
     const box = `<div class="qsearch">
       <span class="qi">${icon("find")}</span>
-      <input id="qs" class="qinp" value="${esc(q)}" placeholder="${esc(t("ابحث بأي دلالة: اسم · مسمى · رقم وظيفة · جامعة"))}"
+      <input id="qs" class="qinp" value="${esc(q)}" placeholder="${esc(t("بحث سريع…"))}" title="${esc(t("ابحث بأي دلالة: اسم · مسمى · رقم وظيفة · جامعة"))}"
         oninput="APP.setQuery(this.value)" autocomplete="off">
       ${q ? `<button class="qx" onclick="APP.setQuery('')">✕</button>` : ""}</div>`;
     if (!q) return box;
@@ -1609,7 +1609,7 @@ ${editBtn}
     "لا توجد نتائج مطابقة": "No matching results", "استقالة": "Resignation",
     "انتقال داخلي": "Internal transfer", "اعرض جدول الانضمام": "Show onboarding table",
     "ابحث بأي دلالة: اسم · مسمى · رقم وظيفة · جامعة": "Search by name, title, job ID or university",
-    "و": "and", "الوظائف": "Positions", "سجل الوظائف": "Positions register",
+    "و": "and", "بحث سريع…": "Quick search…", "الوظائف": "Positions", "سجل الوظائف": "Positions register",
     "كل المراحل": "All stages", "كل الأنواع": "All types", "نوع التوظيف": "Type",
     "جديدة": "New", "بديلة": "Backfill", "بطاقات": "Cards", "جدول": "Table",
     "رقم الوظيفة": "Job ID", "المرشح": "Candidate", "المتقدمون": "Applicants",

@@ -456,15 +456,15 @@ body.edit .editbar{display:flex}
 .sum.link:hover .n,.sum.link:hover .l{color:#fff}
 
 /* ---- البحث السريع ---- */
-.qsearch{position:relative;display:flex;align-items:center;margin-bottom:16px}
-.qsearch .qi{position:absolute;inset-inline-start:16px;display:flex;color:var(--muted);pointer-events:none}
-.qsearch .qi svg{width:18px;height:18px}
-.qinp{width:100%;padding:14px 46px;border:1px solid var(--line);border-radius:14px;background:var(--panel);
-  font-family:inherit;font-size:13.5px;color:var(--ink);transition:.15s}
-.qinp:focus{outline:none;border-color:var(--g-400);box-shadow:0 0 0 4px var(--g-50)}
-.qinp::placeholder{color:var(--muted)}
-.qx{position:absolute;inset-inline-end:14px;border:0;background:var(--g-50);color:var(--ink-2);
-  width:26px;height:26px;border-radius:8px;cursor:pointer;font-size:13px}
+.qsearch{position:relative;display:flex;align-items:center;margin-bottom:14px;max-width:340px}
+.qsearch .qi{position:absolute;inset-inline-start:11px;display:flex;color:var(--muted);pointer-events:none}
+.qsearch .qi svg{width:15px;height:15px}
+.qinp{width:100%;padding:9px 34px;border:1px solid var(--line);border-radius:11px;background:var(--panel);
+  font-family:inherit;font-size:12.5px;color:var(--ink);transition:.15s}
+.qinp:focus{outline:none;border-color:var(--g-400);box-shadow:0 0 0 3px var(--g-50)}
+.qinp::placeholder{color:var(--muted);font-size:12px}
+.qx{position:absolute;inset-inline-end:9px;border:0;background:var(--g-50);color:var(--ink-2);
+  width:21px;height:21px;border-radius:6px;cursor:pointer;font-size:11px;line-height:1}
 .qx:hover{background:var(--g-100)}
 .qres{border:1px solid var(--line);border-radius:16px;background:var(--panel);overflow:hidden;margin-bottom:18px}
 .qhead{padding:10px 16px;background:var(--g-50);border-bottom:1px solid var(--line);
@@ -1740,7 +1740,7 @@ window.APP_CONFIG = {
     const q = (state.query || "").trim();
     const box = `<div class="qsearch">
       <span class="qi">${icon("find")}</span>
-      <input id="qs" class="qinp" value="${esc(q)}" placeholder="${esc(t("ابحث بأي دلالة: اسم · مسمى · رقم وظيفة · جامعة"))}"
+      <input id="qs" class="qinp" value="${esc(q)}" placeholder="${esc(t("بحث سريع…"))}" title="${esc(t("ابحث بأي دلالة: اسم · مسمى · رقم وظيفة · جامعة"))}"
         oninput="APP.setQuery(this.value)" autocomplete="off">
       ${q ? `<button class="qx" onclick="APP.setQuery('')">✕</button>` : ""}</div>`;
     if (!q) return box;
@@ -2833,7 +2833,7 @@ ${editBtn}
     "لا توجد نتائج مطابقة": "No matching results", "استقالة": "Resignation",
     "انتقال داخلي": "Internal transfer", "اعرض جدول الانضمام": "Show onboarding table",
     "ابحث بأي دلالة: اسم · مسمى · رقم وظيفة · جامعة": "Search by name, title, job ID or university",
-    "و": "and", "الوظائف": "Positions", "سجل الوظائف": "Positions register",
+    "و": "and", "بحث سريع…": "Quick search…", "الوظائف": "Positions", "سجل الوظائف": "Positions register",
     "كل المراحل": "All stages", "كل الأنواع": "All types", "نوع التوظيف": "Type",
     "جديدة": "New", "بديلة": "Backfill", "بطاقات": "Cards", "جدول": "Table",
     "رقم الوظيفة": "Job ID", "المرشح": "Candidate", "المتقدمون": "Applicants",
