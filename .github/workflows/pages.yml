@@ -10,7 +10,7 @@ name: نشر الداشبورد على GitHub Pages
 
 on:
   push:
-    branches: ["claude/arabic-hr-dashboard-1qc7ka"]
+    branches: ["claude/recruitment-dashboard-latest-iz1cof"]
   workflow_dispatch:
 
 permissions:
